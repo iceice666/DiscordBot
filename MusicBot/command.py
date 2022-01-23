@@ -10,13 +10,19 @@ import re
 from. import exceptions
 
 
-
+import os
 
 
 
 class MusicCmd(commands.Cog):
     def __init__(self, bot) -> None:
         self.bot = bot
+
+        self.songRepeat=False
+        self.queueLoop=False
+
+        self._playlist=[]
+        self.currentSong=None
 
     def _in_vc_check(self, ctx):
         if ctx.author.voice is None:
@@ -55,6 +61,20 @@ class MusicCmd(commands.Cog):
         pass
 
 
+    def _play(self,ctx,ytURL):
+        ytCode = ytURL.replace("?", "/").split("/")[-1]
+
+        filename = f"audioCache\\{ytCode}.mp3"
+        if os.path.exists(filename):
+            source = disnake.PCMVolumeTransformer(disnake.FFmpegPCMAudio(filename), volume=0.1)
+            ctx.voice_client.play(source, after=self._playing_end)
+
+    def _playing_end(self,error=None):
+        if self.songRepeat:
+            self._playlist.insert(0,self.currentSong)
+        elif self.queueLoop:
+            self._playlist.append(self.currentSong)
+
     @commands.command(name="play")
     async def cmd_play(self, ctx, *, url: str or None = None):
         self._in_vc_check(ctx)
@@ -68,7 +88,8 @@ class MusicCmd(commands.Cog):
                 raise commands.BadArgument(
                     "Is ur URL link has been eaten by Paimon?")
         ytUrl = re.match(
-            "http[s]?:\/\/(www.youtube.com\/watch\?v=|youtu.be\/)[\w-\d]{11}", url).group()
-        ytCode=ytUrl.replace("?","/").split("/")[-1]
+            "http[s]?:\/\/(www.youtube.com\/watch\?v=|youtu.be\/)[\w-_\d]{11}", url).group()
+        self._play(ctx,ytUrl)
 
-        source = disnake.FFmpegPCMAudio()
+
+
