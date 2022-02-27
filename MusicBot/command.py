@@ -64,6 +64,8 @@ class MusicCmd(commands.Cog):
     def _play(self,ctx,ytURL):
         ytCode = ytURL.replace("?", "/").split("/")[-1]
 
+        #TODO YTDL 控制
+
         filename = f"audioCache\\{ytCode}.mp3"
         if os.path.exists(filename):
             source = disnake.PCMVolumeTransformer(disnake.FFmpegPCMAudio(filename), volume=0.1)
