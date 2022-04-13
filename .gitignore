@@ -1,5 +1,5 @@
 .venv/
-.vscode/
+
 audioCache/
 MusicBot/config.py
 TOKEN
