@@ -1,5 +1,7 @@
 
 
+import pathlib
+import youtube_dl
 from pprint import pprint
 import disnake
 
@@ -10,7 +12,20 @@ import re
 from. import exceptions
 
 
-import os
+ytdl_opt = {
+    'format': 'bestaudio/best',
+    'outtmpl': 'audioCache/%(title)s.%(id)s',
+    'restrictfilenames': True,
+    'noplaylist': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quiet': True,
+    'no_warnings': True,
+    'default_search': 'auto',
+    'source_address': '0.0.0.0',
+    'usenetrc': True
+}
 
 
 
@@ -24,6 +39,8 @@ class MusicCmd(commands.Cog):
         self._playlist=[]
         self.currentSong=None
 
+        self._download_list=[]
+
     def _in_vc_check(self, ctx):
         if ctx.author.voice is None:
             raise commands.CommandError(
@@ -32,7 +49,7 @@ class MusicCmd(commands.Cog):
     async def _log(self, ctx, msg):
         await ctx.send(msg)
 
-    @commands.command("error")
+    @commands.command(name="error")
     async def cmdtest_error(self, ctx):
         raise commands.CommandError("U noob")
 
@@ -61,21 +78,10 @@ class MusicCmd(commands.Cog):
         pass
 
 
-    def _play(self,ctx,ytURL):
-        ytCode = ytURL.replace("?", "/").split("/")[-1]
 
-        #TODO YTDL 控制
 
-        filename = f"audioCache\\{ytCode}.mp3"
-        if os.path.exists(filename):
-            source = disnake.PCMVolumeTransformer(disnake.FFmpegPCMAudio(filename), volume=0.1)
-            ctx.voice_client.play(source, after=self._playing_end)
 
-    def _playing_end(self,error=None):
-        if self.songRepeat:
-            self._playlist.insert(0,self.currentSong)
-        elif self.queueLoop:
-            self._playlist.append(self.currentSong)
+
 
     @commands.command(name="play")
     async def cmd_play(self, ctx, *, url: str or None = None):
@@ -90,8 +96,37 @@ class MusicCmd(commands.Cog):
                 raise commands.BadArgument(
                     "Is ur URL link has been eaten by Paimon?")
         ytUrl = re.match(
-            "http[s]?:\/\/(www.youtube.com\/watch\?v=|youtu.be\/)[\w-_\d]{11}", url).group()
-        self._play(ctx,ytUrl)
+            "http[s]?:\/\/(www.youtube.com\/watch\?v=|youtu.be\/)[-_\d\w]{11}", url).group()
+
+        ytCode = ytUrl.replace("?", "/").split("/")[-1]
+
+        matched_files=list(pathlib.Path("./audioCache").glob(f"*.{ytCode}"))
+
+        if not matched_files :
+            await self._ytdl(ytCode)
+            self._download_list.append(ytCode)
+        else:
+            self._play(ctx, ytUrl)
 
 
 
+    def _play(self, ctx, ytCode):
+
+        #TODO play music
+
+        filename = f"audioCache\\{ytCode}"
+
+        source = disnake.PCMVolumeTransformer(
+            disnake.FFmpegPCMAudio(filename), volume=0.1)
+        ctx.voice_client.play(source, after=self._playing_end)
+
+    def _playing_end(self, error=None):
+        if self.songRepeat:
+            self._playlist.insert(0, self.currentSong)
+        elif self.queueLoop:
+            self._playlist.append(self.currentSong)
+
+    @staticmethod
+    async def _ytdl(ytCode: str):
+        with youtube_dl.YoutubeDL(ytdl_opt) as ytdl:
+            ytdl.download([f'https://www.youtube.com/watch?v={ytCode}'])

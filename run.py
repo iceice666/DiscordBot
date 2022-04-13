@@ -12,7 +12,11 @@ need_continue = True
 while need_continue:
     try:
 
-        bot = BOT()
+        token=None
+        with open("TOKEN", "r", encoding="utf-8") as f:
+            token = f.read()
+
+        bot = BOT(token)
         bot.setup()
         bot.run()
 

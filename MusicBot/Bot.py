@@ -1,6 +1,7 @@
+
 from .command import *
 from .event import *
-from . import config
+
 
 
 from disnake.ext import commands
@@ -8,10 +9,14 @@ from disnake.ext import commands
 
 
 
-
 class BOT():
-    def __init__(self):
+
+    def __init__(self,token=None):
         self.bot = commands.Bot(command_prefix=">")
+        if token is not None:
+            self.token=token
+        else:
+            raise AttributeError("Token must be a string.")
 
     def setup(self):
 
@@ -19,7 +24,7 @@ class BOT():
         self.bot.add_cog(BotEvent(self.bot))
 
     def run(self):
-        self.bot.run(config.TOKEN)
+        self.bot.run(self.token)
 
     def stop(self):
         pass
