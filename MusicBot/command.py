@@ -14,7 +14,7 @@ from. import exceptions
 
 ytdl_opt = {
     'format': 'bestaudio/best',
-    'outtmpl': 'audioCache/%(title)s.%(id)s',
+    'outtmpl': 'audioCache/%(id)s.%(ext)s',
     'restrictfilenames': True,
     'noplaylist': True,
     'nocheckcertificate': True,
@@ -58,7 +58,8 @@ class MusicCmd(commands.Cog):
         self._in_vc_check(ctx)
         if ctx.voice_client is None:
             await ctx.author.voice.channel.connect()
-        return await ctx.voice_client.move_to(ctx.author.voice.channel)
+        await ctx.voice_client.move_to(ctx.author.voice.channel)
+        return
 
 
     @commands.command(name="leave")
@@ -88,6 +89,7 @@ class MusicCmd(commands.Cog):
         self._in_vc_check(ctx)
         if ctx.voice_client is None:
             await ctx.voice_client.move_to(ctx.author.voice.channel)
+
         elif url is None:
             if ctx.voice_client.is_paused():
                 ctx.voice_client.resume()
@@ -100,24 +102,23 @@ class MusicCmd(commands.Cog):
 
         ytCode = ytUrl.replace("?", "/").split("/")[-1]
 
-        matched_files=list(pathlib.Path("./audioCache").glob(f"*.{ytCode}"))
+        matched_files=list(pathlib.Path("./audioCache").glob(f"{ytCode}.*"))
 
         if not matched_files :
             await self._ytdl(ytCode)
             self._download_list.append(ytCode)
         else:
-            self._play(ctx, ytUrl)
+            self._play(ctx, matched_files[0])
 
 
 
-    def _play(self, ctx, ytCode):
+    def _play(self, ctx, filepath):
 
         #TODO play music
 
-        filename = f"audioCache\\{ytCode}"
 
         source = disnake.PCMVolumeTransformer(
-            disnake.FFmpegPCMAudio(filename), volume=0.1)
+            disnake.FFmpegPCMAudio(f"./audioCache/{filepath}"), volume=0.1)
         ctx.voice_client.play(source, after=self._playing_end)
 
     def _playing_end(self, error=None):
