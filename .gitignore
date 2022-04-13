@@ -1,4 +1,7 @@
-/.venv
-
+.venv/
+.vscode/
 audioCache/
 MusicBot/config.py
+TOKEN
+viztracer_result.json
+
