@@ -2,7 +2,7 @@
 
 audioCache/
 src/config.py
-src/__pycache__
+**/__pycache__
 TOKEN
 viztracer_result.json
 

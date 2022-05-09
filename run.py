@@ -1,5 +1,5 @@
 
 
-from src import Bot
+from src.Bot import BOT
 
-Bot.start()
+BOT().run()

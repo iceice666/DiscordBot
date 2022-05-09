@@ -1,20 +1,25 @@
 
-import config
 
+
+from src.utilities import Log
+from src import config
 
 import discord
+from discord.ext import commands
 
 
-bot = discord.Bot(owner_id='702352975879864416')
+class BOT:
+
+    logger = Log().getLogger()
+
+    bot = discord.Bot(owner_ids=config.owner_ids)
 
 
 
+    bot.load_extension('src.commands.music')
+    bot.load_extension('src.commands.test')
+    bot.load_extension('src.commands.general')
+    bot.load_extension('src.listener')
 
-@bot.event
-async def on_ready():
-    print("ready!")
-
-
-bot.load_extension('command')
-bot.run(config.bot_token)
-
+    def run(self):
+        self.bot.run(config.bot_token)
