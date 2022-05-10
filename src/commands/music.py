@@ -11,6 +11,8 @@ from discord.commands import SlashCommandGroup, Option
 from src.utilities import Log
 from src.i18n import CONSOLE
 
+
+
 logger = Log.getLogger()
 
 
@@ -135,13 +137,12 @@ class MusicCmd(commands.Cog):
         return await ctx.respond(respond_str)
 
     @music.command(name="play")
-    async def music_play(self, ctx, *, url: discord.Option(str) or None = None):
+    async def music_play(self, ctx, url: discord.Option(str) or None = None):
         self._is_author_in_vc(ctx)
         player = self.getPlayer(ctx)
-        if player is None:
-            await player.move_to(ctx.author.voice.channel)
 
-        elif url is None:
+
+        if url is None:
             if player.is_paused():
                 await player.resume()
                 return
@@ -156,16 +157,21 @@ class MusicCmd(commands.Cog):
 
         matched_files = list(pathlib.Path("./audioCache").glob(f"{ytCode}.*"))
 
-        if player.is_connected() and not (ctx.is_playing() and ctx.is_paused()):
+        if player.is_connected() and not (player.is_playing() and player.is_paused()):
 
             # TODO play music
             pass
 
         else:
-            self.playlist.append({ytCode: matched_files[0]})
+            #TODO add music add playlist
+            pass
 
     def _playing_end(self, error=None):
         if self.songRepeat:
-            self.playlist.insert(0, self.nowplaying)
+            #TODO insert song to index 0
+            #self.playlist.insert(0, self.nowplaying)
+            pass
         elif self.queueLoop:
-            self.playlist.append(self.nowplaying)
+            #TODO append song to end
+            #self.playlist.append(self.nowplaying)
+            pass
