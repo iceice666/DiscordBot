@@ -3,10 +3,10 @@ from typing import Optional
 
 import discord
 import wavelink
+import yarl
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
-
-import logging
+from wavelink import YouTubePlaylist
 
 
 class MusicCmd(commands.Cog):
@@ -34,7 +34,8 @@ class MusicCmd(commands.Cog):
 
         try:
             wavelink.NodePool.get_node()
-            logging.getLogger('DiscordMusicBot').info("Lavalink server connected")
+            logging.getLogger('DiscordMusicBot').info(
+                "Lavalink server connected")
         except wavelink.errors.ZeroConnectedNodes:
             logging.getLogger('DiscordMusicBot').error(
                 "Fails to connect lavalink server!")
@@ -63,14 +64,20 @@ class MusicCmd(commands.Cog):
 
         return commands.check(predicate)
 
-    @staticmethod
-    def get_player(ctx):
+    @classmethod
+    def get_node(cls):
         node = wavelink.NodePool.get_node()
+        return node
+
+    @classmethod
+    def get_player(cls, ctx):
+        node = cls.get_node()
         player: wavelink.Player = node.get_player(ctx.guild)
         return player
 
     music = SlashCommandGroup("music", "音樂用")
 
+    # & join
     @music.command(name="join")
     @_is_author_in_vc()
     async def music_join(self, ctx):
@@ -93,6 +100,7 @@ class MusicCmd(commands.Cog):
             f'joined channel<{ctx.author.voice.channel}>')
         return
 
+    # & leave
     @music.command(name="leave")
     @_is_author_in_vc()
     async def music_leave(self, ctx):
@@ -104,6 +112,7 @@ class MusicCmd(commands.Cog):
         await player.disconnect()
         await ctx.respond(":broken_heart: Ok bye... :broken_heart:")
 
+    # & pause
     @music.command(name="pause")
     @_is_author_in_vc()
     async def music_pause(self, ctx):
@@ -113,6 +122,7 @@ class MusicCmd(commands.Cog):
             await player.pause()
         await ctx.respond("paused")
 
+    # & nowplaying
     @music.command(name="nowplaying")
     async def music_nowplaying(self, ctx):
         player = self.get_player(ctx)
@@ -120,6 +130,8 @@ class MusicCmd(commands.Cog):
             return await ctx.respond(f':sleeping: 閒置中...')
         else:
             return await ctx.respond(f':musical_note: 現正播放:\n**{player.source.title}**')
+
+    # & queue
 
     @music.command(name="queue")
     @_is_author_in_vc()
@@ -142,7 +154,7 @@ class MusicCmd(commands.Cog):
                 index = "0" + str(i)
 
             respond_str.append(
-                f'{" ".join([number_map[a] for a in list(index)])}  {song.title}')
+                f'{"".join([number_map[a] for a in list(index)])}  {song.title}')
         respond_str.append(f'')
         respond_str.append(
             f':repeat_one: **單曲循環**  {":white_check_mark: " if self.songRepeat[ctx.guild.id] else ":x:"}')
@@ -151,6 +163,7 @@ class MusicCmd(commands.Cog):
 
         return await ctx.respond('\n'.join(respond_str))
 
+    # & clear
     @music.command(name="clear")
     @_is_author_in_vc()
     async def music_clear(self, ctx):
@@ -160,18 +173,21 @@ class MusicCmd(commands.Cog):
         else:
             player.queue.clear()
 
+    # & repeat
     @music.command(name="repeat")
     @_is_author_in_vc()
     async def music_repeat(self, ctx):
         self.songRepeat[ctx.guild.id] = not self.songRepeat[ctx.guild.id]
         return await ctx.respond(f":repeat_one: **已{f'啟用' if self.songRepeat[ctx.guild.id] else f'禁用'}單曲循環**")
 
+    # & loop
     @music.command(name="loop")
     @_is_author_in_vc()
     async def music_loop(self, ctx):
         self.queueLoop[ctx.guild.id] = not self.queueLoop[ctx.guild.id]
         return await ctx.respond(f":repeat_one: **已{f'啟用' if self.queueLoop[ctx.guild.id] else f'禁用'}歌單循環**")
 
+    # & skip
     @music.command(name="skip")
     @_is_author_in_vc()
     @_is_bot_joined()
@@ -193,10 +209,10 @@ class MusicCmd(commands.Cog):
                 if i.info['identifier'] == self._menu.values[0]:
                     self.selected_track = i
                     break
-            await self._add_track(self.selected_track)
+            await self.add_track(self.selected_track)
             await interaction.response.send_message(f'已將 {self.selected_track.title} 加入播放清單中')
 
-        async def _add_track(self, track):
+        async def add_track(self, track):
             player = MusicCmd.get_player(self.ctx)
 
             await player.queue.put_wait(track)
@@ -239,6 +255,7 @@ class MusicCmd(commands.Cog):
 
         await self.mp.play()
 
+    # & play
     @music.command(name="play", description='放音樂')
     @_is_author_in_vc()
     @_is_bot_joined()
@@ -253,4 +270,9 @@ class MusicCmd(commands.Cog):
             else:
                 raise commands.CommandError("missing_song_name")
 
+        parsed_url = yarl.URL(search)
+
         await self.mp.create_task(ctx, search)
+        if parsed_url.is_absolute() and (str(parsed_url.host) == 'youtube.com' or str(
+                parsed_url.host) == 'www.youtube.com'):
+            await self.mp.add_track(await self.get_node().get_playlist(cls=YouTubePlaylist, identifier=search))
