@@ -1,5 +1,4 @@
 
 
-from src.Bot import BOT
-
-BOT().run()
+from src.Bot import run
+run()

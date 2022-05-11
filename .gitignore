@@ -5,4 +5,7 @@ src/config.py
 **/__pycache__
 TOKEN
 viztracer_result.json
-
+lavalink
+.src/log
+.idea/
+.vscode
