@@ -1,11 +1,10 @@
-.env/
+.venv/
 
-audioCache/
 src/config.py
 **/__pycache__
-TOKEN
+
 viztracer_result.json
-lavalink
-.src/log
+lavalink/
+
 .idea/
-.vscode
+.vscode/
