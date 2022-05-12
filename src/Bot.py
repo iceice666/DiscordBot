@@ -1,6 +1,9 @@
 import logging
+
 import discord
+
 from src import config
+
 print("\n")
 print("""
 
@@ -29,18 +32,16 @@ print("""
 
 """)
 
-
-bot = discord.Bot(owner_ids=config.owner_ids)
+bot = discord.Bot(owner_ids=config["BOT"]["owner_ids"])
 
 bot.load_extension('src.functions')
 bot.load_extension('src.functions.music')
 bot.load_extension('src.listener')
 
-
 logger = logging.getLogger("DiscordMusicBot")
 logger.setLevel(logging.DEBUG)
 logger_formatter = logging.Formatter(
-    '[%(asctime)s][%(levelname)s][%(name)s]:\n%(message)s',datefmt="%Y%m%d %p %I:%M:%S"
+    '[%(asctime)s][%(levelname)s][%(name)s]:\n%(message)s', datefmt="%Y%m%d %p %I:%M:%S"
 )
 
 console = logging.StreamHandler()
@@ -53,9 +54,8 @@ file.setLevel(level=logging.INFO)
 file.setFormatter(logger_formatter)
 logger.addHandler(file)
 
-
 logger.info("Starting bot")
 
 
 def run():
-    bot.run(config.bot_token)
+    bot.run(config["BOT"]["token"])

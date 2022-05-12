@@ -122,6 +122,7 @@ class MusicCmd(commands.Cog):
         await ctx.respond("paused")
 
     # & nowplaying
+    # TODO seek the duration
     @music.command(name="nowplaying")
     async def music_nowplaying(self, ctx):
         player = self.get_player(ctx.guild)
@@ -205,8 +206,12 @@ class MusicCmd(commands.Cog):
         await player.stop()
         return await ctx.respond(":fast_forward: Skipped")
 
+    # & quickplay
+    # TODO quickplay system
+
     # & play
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     @music.command(name="play", description='放音樂')
     @_is_author_in_vc()
     @_is_bot_joined()
@@ -239,7 +244,7 @@ class MusicCmd(commands.Cog):
             select = discord.ui.Select(placeholder="你在想甚麼？")
             select.add_option(label="跨沙小")
             view.add_item(select)
-            await self.ctx.respond(view=view)
+            await self.ctx.edit(view=view)
 
         class _Menu(discord.ui.Select):
             def __init__(self, tracks):
@@ -276,7 +281,8 @@ class MusicCmd(commands.Cog):
     async def _play(cls, guild):
         player = cls.get_player(guild)
         np = await player.queue.get_wait()
-        logging.getLogger(f"DiscordMusicBot.Guild.{player.guild}").debug(f"Now playing: '{np}'")
+        logging.getLogger(f"DiscordMusicBot.Guild.{player.guild}").debug(
+            f"Now playing: '{np}'")
         await player.play(np)
 
     @commands.Cog.listener()

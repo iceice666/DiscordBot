@@ -1,0 +1,11 @@
+BOT:
+  token: >  #bot token
+    OTcyMzE3NjYwOTY2Njk0OTUy.GAvPnA.FBqAdSWlHAgFlNipkehf7lqnfERHtJ65JqvgnU
+
+  client_id: 972317660966694952
+
+  owner_ids: #The Discord ids who own the bot.
+    - "702352975879864416"
+    - ""
+  role_ids: #The role id who can use admin commands.
+    - "972760419519332392"

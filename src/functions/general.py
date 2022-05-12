@@ -14,7 +14,7 @@ class GeneralCmd(commands.Cog):
     @commands.slash_command(name="invite")
     async def cmd_invite(self, ctx):
         view = discord.ui.View(discord.ui.Button(label="Invite", style=discord.ButtonStyle.primary,
-                                                 url=f"https://discord.com/api/oauth2/authorize?client_id={config.bot_client_id}&permissions=8&scope=bot%20applications.commands"))
+                                                 url=f"https://discord.com/api/oauth2/authorize?client_id={config['BOT']['client_id']}&permissions=8&scope=bot%20applications.commands"))
         await ctx.respond(view=view)
 
 
@@ -24,11 +24,11 @@ class TestCmd(commands.Cog):
 
     @staticmethod
     def is_bot_dev(ctx):
-        role_id = config.role_botDev
-        role = discord.utils.get(
-            ctx.author.roles, id=role_id)
-        if role is None:
-            raise commands.MissingRole(role_id)
+        role_id = config['BOT']['role_ids']
+        for i in role_id:
+            role = discord.utils.get(ctx.author.roles, id=i)
+            if role is None:
+                raise commands.MissingRole(role_id)
         return True
 
     @commands.slash_command(name="ping")

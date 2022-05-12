@@ -1,6 +1,5 @@
 .venv/
 
-src/config.py
 **/__pycache__
 
 viztracer_result.json
