@@ -6,6 +6,7 @@ import yarl
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 from discord.utils import escape_markdown
+from src import config
 
 
 class MusicCmd(commands.Cog):
@@ -26,10 +27,10 @@ class MusicCmd(commands.Cog):
 
         # noinspection SpellCheckingInspection
         await wavelink.NodePool.create_node(bot=self.bot,
-                                            host="aitronlavalink.tk",
-                                            port=443,
-                                            password="aitronbots.tk",
-                                            https=True)
+                                            host=config['Lavalink']['host'],
+                                            port=config['Lavalink']['port'],
+                                            password=config['Lavalink']['password'],
+                                            https=config['Lavalink']['ssl_security'])
 
         try:
             wavelink.NodePool.get_node()

@@ -2,9 +2,9 @@
 
 **/__pycache__
 
-viztracer_result.json
 lavalink/
 
 .idea/
-.vscode/
 
+
+config.yaml
