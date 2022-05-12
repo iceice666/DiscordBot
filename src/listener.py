@@ -25,6 +25,8 @@ class Listener(commands.Cog):
             err = exc.original
         elif isinstance(exc, commands.CheckFailure):
             err = exc
+        else:
+            err = exc
 
         match err.__class__:
             case commands.CommandError:
@@ -36,7 +38,6 @@ class Listener(commands.Cog):
                     f"\n {ctx.author.nick}[{ctx.author.name}#{ctx.author.discriminator}]{ctx.author.mention} @ Guild {ctx.guild.name}<{ctx.guild.id}> :\n   Missing role {role.name}{role.mention}")
                 await ctx.respond(f":no_entry_sign: 你沒有 {role.mention} 身分組！")
 
-            case _:
+            case _ as e if e is not SystemExit:
                 logging.getLogger(f'DiscordMusicBot.Guild.{ctx.guild}').error(
                     f"\n{exc}\n", exc_info=1)
-                await ctx.respond(f":x: **{exc}**")

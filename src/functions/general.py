@@ -1,10 +1,10 @@
+import sys
+
 import discord
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 
 from src import config
-
-
 
 
 class GeneralCmd(commands.Cog):
@@ -29,7 +29,7 @@ class TestCmd(commands.Cog):
             ctx.author.roles, id=role_id)
         if role is None:
             raise commands.MissingRole(role_id)
-        return
+        return True
 
     @commands.slash_command(name="ping")
     async def cmd_ping(self, ctx):
@@ -37,15 +37,20 @@ class TestCmd(commands.Cog):
 
     @commands.slash_command(name="breakpoint")
     async def _breakpoint(self, ctx):
-        pass
+        228922 / 0 * (114514 + 1919810)
 
-    test = SlashCommandGroup("test", "測試用", checks=[is_bot_dev])
+    admin = SlashCommandGroup("admin", "測試用", checks=[is_bot_dev])
 
-    @test.command(name="echo")
+    @admin.command(name="quit")
+    async def cmd_quit(self, ctx):
+        await ctx.respond('cya~', ephemeral=True)
+        sys.exit(0)
+
+    @admin.command(name="echo")
     async def test_echo(self, ctx, msg):
         await ctx.respond(msg)
 
-    error = test.create_subgroup("error", "for Debug")
+    error = admin.create_subgroup("error", "for Debug")
 
     @error.command(name="cmd")
     async def error_cmd(self, _):
@@ -54,8 +59,4 @@ class TestCmd(commands.Cog):
     @error.command(name="role")
     @commands.has_role(972430880943529986)
     async def error_role(self, ctx):
-        ctx.respond(":interrobang: **I have two???**")
-
-    @error.command(name="divide0")
-    async def error_div0(self, _):
-        114514 / 0
+        await ctx.respond(":interrobang: **I have two???**")

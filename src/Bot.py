@@ -40,16 +40,16 @@ bot.load_extension('src.listener')
 logger = logging.getLogger("DiscordMusicBot")
 logger.setLevel(logging.DEBUG)
 logger_formatter = logging.Formatter(
-    '[%(asctime)s][%(levelname)s][%(pathname)s][%(name)s]:\n%(message)s',
+    '[%(asctime)s][%(levelname)s][%(name)s]:\n%(message)s',datefmt="%Y%m%d %p %I:%M:%S"
 )
 
 console = logging.StreamHandler()
-console.setLevel(level=logging.INFO)
+console.setLevel(level=logging.DEBUG)
 console.setFormatter(logger_formatter)
 logger.addHandler(console)
 
 file = logging.FileHandler(".log", encoding='utf-8', mode='w')
-file.setLevel(level=logging.DEBUG)
+file.setLevel(level=logging.INFO)
 file.setFormatter(logger_formatter)
 logger.addHandler(file)
 

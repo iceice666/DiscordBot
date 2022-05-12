@@ -1,12 +1,11 @@
 import logging
-from typing import Optional
 
 import discord
 import wavelink
 import yarl
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
-from wavelink import YouTubePlaylist
+from discord.utils import escape_markdown
 
 
 class MusicCmd(commands.Cog):
@@ -70,9 +69,9 @@ class MusicCmd(commands.Cog):
         return node
 
     @classmethod
-    def get_player(cls, ctx):
+    def get_player(cls, guild):
         node = cls.get_node()
-        player: wavelink.Player = node.get_player(ctx.guild)
+        player: wavelink.Player = node.get_player(guild)
         return player
 
     music = SlashCommandGroup("music", "音樂用")
@@ -82,7 +81,7 @@ class MusicCmd(commands.Cog):
     @_is_author_in_vc()
     async def music_join(self, ctx):
 
-        player = self.get_player(ctx)
+        player = self.get_player(ctx.guild)
 
         if player is None:
             await ctx.respond(":heart: 我要進來嘍~ :heart:")
@@ -105,7 +104,7 @@ class MusicCmd(commands.Cog):
     @_is_author_in_vc()
     async def music_leave(self, ctx):
 
-        player = self.get_player(ctx)
+        player = self.get_player(ctx.guild)
         if player is None:
             await ctx.respond(":question:???:exclamation:")
             return
@@ -117,7 +116,7 @@ class MusicCmd(commands.Cog):
     @_is_author_in_vc()
     async def music_pause(self, ctx):
 
-        player = self.get_player(ctx)
+        player = self.get_player(ctx.guild)
         if player.is_playing():
             await player.pause()
         await ctx.respond("paused")
@@ -125,18 +124,17 @@ class MusicCmd(commands.Cog):
     # & nowplaying
     @music.command(name="nowplaying")
     async def music_nowplaying(self, ctx):
-        player = self.get_player(ctx)
+        player = self.get_player(ctx.guild)
         if player is None or player.source is None:
             return await ctx.respond(f':sleeping: 閒置中...')
         else:
-            return await ctx.respond(f':musical_note: 現正播放:\n**{player.source.title}**')
+            return await ctx.respond(f':musical_note: 現正播放:\n**{escape_markdown(player.source.info["title"])}**')
 
     # & queue
-
     @music.command(name="queue")
-    @_is_author_in_vc()
+    @_is_bot_joined()
     async def music_queue(self, ctx):
-        player = self.get_player(ctx)
+        player = self.get_player(ctx.guild)
 
         number_map = {"1": ":one:", "2": ":two:", "3": ":three:", "4": ":four:",
                       "5": ":five:", "6": ":six:", "7": ":seven:", "8": ":eight:", "9": ":nine:", "0": ":zero:"}
@@ -144,14 +142,18 @@ class MusicCmd(commands.Cog):
         i: int = 0
         index = str
         respond_str = [
-            '' if player.source is None or player is None else f":musical_note: 現正播放:\n**{player.source.title}**", '',
+            '' if player.source is None or player is None else f":musical_note: 現正播放:",
+            f"**{escape_markdown(player.source.info['title'])}**" if player.is_playing else f':sleeping: 閒置中...',
             ':notes: 歌單:']
         for song in player.queue:
             i = i + 1
-            if 10 <= i <= 99:
+            if len(player.queue) > 9:
+                if 10 <= i <= 99:
+                    index = str(i)
+                elif 1 <= i <= 9:
+                    index = "0" + str(i)
+            else:
                 index = str(i)
-            elif 1 <= i <= 9:
-                index = "0" + str(i)
 
             respond_str.append(
                 f'{"".join([number_map[a] for a in list(index)])}  {song.title}')
@@ -163,11 +165,14 @@ class MusicCmd(commands.Cog):
 
         return await ctx.respond('\n'.join(respond_str))
 
+    # & remove
+    # TODO remove song
+
     # & clear
     @music.command(name="clear")
     @_is_author_in_vc()
     async def music_clear(self, ctx):
-        player = self.get_player(ctx)
+        player = self.get_player(ctx.guild)
         if player.queue.is_empty:
             pass
         else:
@@ -176,92 +181,37 @@ class MusicCmd(commands.Cog):
     # & repeat
     @music.command(name="repeat")
     @_is_author_in_vc()
-    async def music_repeat(self, ctx):
-        self.songRepeat[ctx.guild.id] = not self.songRepeat[ctx.guild.id]
-        return await ctx.respond(f":repeat_one: **已{f'啟用' if self.songRepeat[ctx.guild.id] else f'禁用'}單曲循環**")
+    async def music_repeat(self, ctx, toggle: discord.Option(bool) or None = None):
+        if toggle is not None:
+            self.songRepeat[ctx.guild.id] = toggle
+        return await ctx.respond(
+            f':repeat: **單曲循環**  {":white_check_mark: " if self.songRepeat[ctx.guild.id] else ":x:"}')
 
     # & loop
     @music.command(name="loop")
     @_is_author_in_vc()
-    async def music_loop(self, ctx):
-        self.queueLoop[ctx.guild.id] = not self.queueLoop[ctx.guild.id]
-        return await ctx.respond(f":repeat_one: **已{f'啟用' if self.queueLoop[ctx.guild.id] else f'禁用'}歌單循環**")
+    async def music_loop(self, ctx, toggle: discord.Option(bool) or None = None):
+        if toggle is not None:
+            self.queueLoop[ctx.guild.id] = toggle
+        return await ctx.respond(
+            f':repeat: **歌單循環**  {":white_check_mark: " if self.queueLoop[ctx.guild.id] else ":x:"}')
 
     # & skip
     @music.command(name="skip")
     @_is_author_in_vc()
     @_is_bot_joined()
     async def music_skip(self, ctx):
-        player = self.get_player(ctx)
+        player = self.get_player(ctx.guild)
         await player.stop()
-        return await ctx.respond("skipped")
-
-    class MusicPlayer:
-        def __init__(self, ):
-            self._menu: Optional[discord.ui.Select] = None
-            self.ctx = None
-            self.searched_tracklist: Optional[list[wavelink.Track]] = None
-            self.view: Optional[discord.ui.View] = None
-
-        async def _select_menu_callback(self, interaction):
-            self.view.clear_items()
-            for i in self.searched_tracklist:
-                if i.info['identifier'] == self._menu.values[0]:
-                    self.selected_track = i
-                    break
-            await self.add_track(self.selected_track)
-            await interaction.response.send_message(f'已將 {self.selected_track.title} 加入播放清單中')
-
-        async def add_track(self, track):
-            player = MusicCmd.get_player(self.ctx)
-
-            await player.queue.put_wait(track)
-
-            if not player.is_playing():
-                await self.play()
-
-        async def create_task(self, ctx, search):
-            self.ctx = ctx
-            self.searched_tracklist = await wavelink.YouTubeTrack.search(search)
-            self._menu = discord.ui.Select(placeholder="為啥你不要直接輸入網址呢？")
-            self._menu.callback = self._select_menu_callback
-
-            for track in self.searched_tracklist:
-                self._menu.add_option(
-                    label=track.info['title'], value=track.info['identifier'])
-            self.view = discord.ui.View(timeout=30)
-            self.view.add_item(self._menu)
-            await ctx.respond(f":musical_note: **Searching** :mag_right: {search}", view=self.view, ephemeral=True)
-
-        async def play(self):
-            player = MusicCmd.get_player(self.ctx)
-            np = await player.queue.get_wait()
-            logging.getLogger(f"DiscordMusicBot.Guild.{self.ctx.guild}").debug(
-                f"Now playing: '{np}'")
-            await player.play(np)
-
-    mp = MusicPlayer()
-
-    @commands.Cog.listener()
-    async def on_wavelink_track_end(self, player, track, reason):
-        logging.getLogger(f'DiscordMusicBot.Guild.{player.guild}').debug(
-            f"Track '{track}' finished playing: {reason}")
-        if reason == "LOAD_FAILED":
-            raise commands.CommandError("無法載入歌曲！")
-        if self.songRepeat[player.guild.id]:
-            player.queue.put_at_front(track)
-        elif self.queueLoop[player.guild.id]:
-            player.queue.put(track)
-
-        await self.mp.play()
+        return await ctx.respond(":fast_forward: Skipped")
 
     # & play
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     @music.command(name="play", description='放音樂')
     @_is_author_in_vc()
     @_is_bot_joined()
     async def music_play(self, ctx, search: discord.Option(str, description='請搜尋') or None = None):
-
-        player = self.get_player(ctx)
+        player = self.get_player(ctx.guild)
 
         if search is None:
             if player.is_paused():
@@ -270,9 +220,83 @@ class MusicCmd(commands.Cog):
             else:
                 raise commands.CommandError("missing_song_name")
 
-        parsed_url = yarl.URL(search)
+        searched_tracklist = await wavelink.YouTubeTrack.search(search)
+        await ctx.respond(f":musical_note: **Searching** :mag_right: {search}")
 
-        await self.mp.create_task(ctx, search)
-        if parsed_url.is_absolute() and (str(parsed_url.host) == 'youtube.com' or str(
-                parsed_url.host) == 'www.youtube.com'):
-            await self.mp.add_track(await self.get_node().get_playlist(cls=YouTubePlaylist, identifier=search))
+        if yarl.URL(search).is_absolute():
+            await self.add_track(searched_tracklist[0], ctx)
+        else:
+            await ctx.respond(content='', view=self._View(ctx, searched_tracklist))
+
+    class _View(discord.ui.View):
+        def __init__(self, ctx, tracks):
+            super().__init__(timeout=60)
+            self.ctx = ctx
+            self.add_item(self._Menu(tracks))
+
+        async def on_timeout(self) -> None:
+            view = discord.ui.View()
+            select = discord.ui.Select(placeholder="你在想甚麼？")
+            select.add_option(label="跨沙小")
+            view.add_item(select)
+            await self.ctx.respond(view=view)
+
+        class _Menu(discord.ui.Select):
+            def __init__(self, tracks):
+                super().__init__(placeholder="為啥你不要直接輸入網址呢？")
+                self.tracks = tracks
+                for track in self.tracks:
+                    if len(escape_markdown(track.title)) > 100:
+                        continue
+                    self.add_option(
+                        label=escape_markdown(track.title), value=track.identifier, description=track.author)
+
+            async def callback(self, interaction):
+                self.disabled = True
+                for track in self.tracks:
+                    if track.identifier == self.values[0]:
+                        await MusicCmd.add_track(track, interaction)
+                        return
+
+    @classmethod
+    async def add_track(cls, track, context):
+        player = cls.get_player(context.guild)
+
+        if isinstance(context, discord.InteractionResponse):
+            await context.edit_message(content=f'已將 **{escape_markdown(track.title)}** 加入播放清單中',
+                                       view=None)
+        elif isinstance(context, discord.commands.context.ApplicationContext):
+            await context.respond(content=f'已將 **{escape_markdown(track.title)}** 加入播放清單中')
+
+        await player.queue.put_wait(track)
+        if not player.is_playing():
+            await cls._play(context.guild)
+
+    @classmethod
+    async def _play(cls, guild):
+        player = cls.get_player(guild)
+        np = await player.queue.get_wait()
+        logging.getLogger(f"DiscordMusicBot.Guild.{player.guild}").debug(f"Now playing: '{np}'")
+        await player.play(np)
+
+    @commands.Cog.listener()
+    async def on_wavelink_track_end(self, player, track, reason):
+        logger = logging.getLogger(f'DiscordMusicBot.Guild.{player.guild}')
+        logger.debug(
+            f"Finished playing: {escape_markdown(track.title)} [{reason}]")
+
+        match reason:
+            case "LOAD_FAILED":
+                logger.warning("無法載入歌曲！")
+
+            case "STOPPED":
+                pass
+
+            case _:
+                if self.songRepeat[player.guild.id]:
+                    player.queue.put_at_front(track)
+                elif self.queueLoop[player.guild.id]:
+                    player.queue.put(track)
+
+        await self._play(player.guild)
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
