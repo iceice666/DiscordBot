@@ -59,8 +59,7 @@ Defines a `setup` function in your project root folder ( \_\_init\_\_.py ) like 
 
  def setup(bot): # 'bot' argument is required.
    # load some stuff brabrabra
-   logging.getLogger('DiscordMusicBot').debug( #log a message
-        "Load <your project> successful")
+   do_somthing()
 ```
 
 To load extensions, add the filepath where you define the `setup` function to the `extension` variable in `src/bot.py`.
