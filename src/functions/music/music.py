@@ -29,18 +29,10 @@ class MusicCmd(commands.Cog):
 
         # noinspection SpellCheckingInspection
         await wavelink.NodePool.create_node(bot=self.bot,
-                                            host=config['Lavalink']['host'],
-                                            port=config['Lavalink']['port'],
-                                            password=config['Lavalink']['password'],
-                                            https=config['Lavalink']['ssl_security'])
-
-        try:
-            wavelink.NodePool.get_node()
-            logging.getLogger('DiscordMusicBot').info(
-                "Lavalink server connected")
-        except wavelink.errors.ZeroConnectedNodes:
-            logging.getLogger('DiscordMusicBot').error(
-                "Fails to connect lavalink server!")
+                                            host=config['Lavalink']['Host'],
+                                            port=config['Lavalink']['Port'],
+                                            password=config['Lavalink']['Password'],
+                                            https=config['Lavalink']['Secure'])
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -95,7 +87,6 @@ class MusicCmd(commands.Cog):
         else:
             await ctx.respond(":two_hearts: 我來啦~ :cupid:")
             await player.move_to(ctx.author.voice.channel)
-
 
         return
 
@@ -244,15 +235,16 @@ class MusicCmd(commands.Cog):
                 raise commands.CommandError("missing_song_name")
 
         searched_tracklist = await wavelink.YouTubeTrack.search(search)
-        await ctx.respond(f":musical_note: **Searching** :mag_right: {search}")
 
         if player is None:
             await ctx.author.voice.channel.connect(cls=wavelink.Player)
 
+        await ctx.respond(f":musical_note: **Searching** :mag_right: {search}")
         if yarl.URL(search).is_absolute():
+
             await self.add_track(searched_tracklist[0], ctx)
         else:
-            await ctx.respond(content='', view=self._View(ctx, searched_tracklist))
+            await ctx.respond(view=self._View(ctx, searched_tracklist))
 
     class _View(discord.ui.View):
         def __init__(self, ctx, tracks):
@@ -287,11 +279,11 @@ class MusicCmd(commands.Cog):
         player = cls.get_player(context.guild)
 
         if isinstance(context, discord.Interaction):
+
             if track == 'cancel':
                 await context.response.edit_message(content='搜尋已取消', view=None)
             else:
-                await context.response.edit_message(content=f'已將 **{escape_markdown(track.title)}** 加入播放清單中',
-                                                    view=None)
+                await context.response.edit_message(content=f'已將 **{escape_markdown(track.title)}** 加入播放清單中', view=None)
         elif isinstance(context, discord.commands.context.ApplicationContext):
             if track == 'timeout':
                 await context.edit(content='給林北認真選啦', view=None)

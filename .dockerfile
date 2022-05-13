@@ -4,10 +4,11 @@ LABEL author="KSHSlime#9034" Github="https://github.com/iceice666/DiscordMusicBo
 
 WORKDIR /user/src/app
 
-COPY requirements.txt ./
 
-RUN pip install -r requirements.txt
+RUN pip install py-cord['voice'] --pre
+RUN pip install wavelink
+RUN pip install Pyyaml
 
 COPY . .
 
-CMD ["python3","run.py"]
+CMD ["python3","run.py","--docker"]

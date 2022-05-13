@@ -5,7 +5,7 @@
 BOT:
   #bot token
   token: ""
-    
+
 
   #bot client id
   client_id: 1919810114514228922
@@ -23,7 +23,7 @@ BOT:
   #Some public servers
   #https://lavalink.darrennathanael.com/
 Lavalink:
-  host: "aitronlavalink.tk"
-  port: 443
-  password: "aitronbots.tk"
-  ssl_security: True
+  Host: "aitronlavalink.tk"
+  Port: 443
+  Password: "aitronbots.tk"
+  Secure: True
