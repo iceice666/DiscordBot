@@ -23,7 +23,7 @@ BOT:
   #Some public servers
   #https://lavalink.darrennathanael.com/
 Lavalink:
-  host:"aitronlavalink.tk"
-  port:443
-  password:"aitronbots.tk"
-  ssl_security:True
+  - host: "aitronlavalink.tk"
+  - port: 443
+  - password: "aitronbots.tk"
+  - ssl_security: True
