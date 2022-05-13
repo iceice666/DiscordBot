@@ -4,19 +4,19 @@
 
 BOT:
   #bot token
-  token: >
-    ""
+  token: ""
+    
 
   #bot client id
   client_id: 1919810114514228922
 
   #The Discord ids who own the bot.
   owner_ids:
-    - "123123123123123123"
-    - "222312340875029525"
+    - 123123123123123123
+    - 222312340875029525
   #The role id who can use admin commands.
   role_ids:
-    - "029384570239092434"
+    - 029384570239092434
 
 
   #Lavalink server
