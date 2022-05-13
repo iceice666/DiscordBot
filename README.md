@@ -11,7 +11,9 @@
 * [Wavelink](https://github.com/PythonistaGuild/Wavelink)
 
 ```bash
-pip install -r requirements.txt
+pip install pyyaml
+pip install py-cord[voice] --pre
+pip install wavelink
 ```
 
 * A [Lavalink](https://github.com/freyacodes/Lavalink) server
