@@ -1,6 +1,8 @@
 import yaml
+import os
 
+
+# ~ config loader
 config: dict
-
-with open("src.config.ymal", mode="r") as f:
-    config = yaml.load(f)
+with open(f"{os.getcwd()}/config.yaml", mode="r") as f:
+    config = yaml.load(f,yaml.Loader)

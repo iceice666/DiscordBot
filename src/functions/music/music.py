@@ -6,6 +6,7 @@ import yarl
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 from discord.utils import escape_markdown
+
 from src import config
 
 
@@ -145,7 +146,8 @@ class MusicCmd(commands.Cog):
         index = str
         respond_str = [
             '' if player.source is None or player is None else f":musical_note: 現正播放:",
-            f"**{escape_markdown(player.source.info['title'])}**" if player.is_playing else f':sleeping: 閒置中...',
+            f"**{escape_markdown(player.source.title)}**" if player.is_playing() else f':sleeping: 閒置中...',
+            f"Youtuber: {player.source.author}",
             ':notes: 歌單:']
         for song in player.queue:
             i = i + 1
@@ -159,6 +161,8 @@ class MusicCmd(commands.Cog):
 
             respond_str.append(
                 f'{"".join([number_map[a] for a in list(index)])}  {song.title}')
+            respond_str.append(
+                f"{'      ' * len(index)}Youtuber: {player.source.author}")
         respond_str.append(f'')
         respond_str.append(
             f':repeat_one: **單曲循環**  {":white_check_mark: " if self.songRepeat[ctx.guild.id] else ":x:"}')
@@ -215,9 +219,10 @@ class MusicCmd(commands.Cog):
 
     @music.command(name="play", description='放音樂')
     @_is_author_in_vc()
-    @_is_bot_joined()
     async def music_play(self, ctx, search: discord.Option(str, description='請搜尋') or None = None):
         player = self.get_player(ctx.guild)
+        if player is None:
+            await ctx.author.voice.channel.connect(cls=wavelink.Player)
 
         if search is None:
             if player.is_paused():
@@ -241,16 +246,14 @@ class MusicCmd(commands.Cog):
             self.add_item(self._Menu(tracks))
 
         async def on_timeout(self) -> None:
-            view = discord.ui.View()
-            select = discord.ui.Select(placeholder="你在想甚麼？")
-            select.add_option(label="跨沙小")
-            view.add_item(select)
-            await self.ctx.edit(view=view)
+
+            await MusicCmd.add_track('timeout', self.ctx)
 
         class _Menu(discord.ui.Select):
             def __init__(self, tracks):
                 super().__init__(placeholder="為啥你不要直接輸入網址呢？")
                 self.tracks = tracks
+                self.add_option(label="取消搜尋", value='cancel')
                 for track in self.tracks:
                     if len(escape_markdown(track.title)) > 100:
                         continue
@@ -258,7 +261,8 @@ class MusicCmd(commands.Cog):
                         label=escape_markdown(track.title), value=track.identifier, description=track.author)
 
             async def callback(self, interaction):
-                self.disabled = True
+                if self.values[0] == 'cancel':
+                    await MusicCmd.add_track('cancel', interaction)
                 for track in self.tracks:
                     if track.identifier == self.values[0]:
                         await MusicCmd.add_track(track, interaction)
@@ -268,13 +272,20 @@ class MusicCmd(commands.Cog):
     async def add_track(cls, track, context):
         player = cls.get_player(context.guild)
 
-        if isinstance(context, discord.InteractionResponse):
-            await context.edit_message(content=f'已將 **{escape_markdown(track.title)}** 加入播放清單中',
-                                       view=None)
+        if isinstance(context, discord.Interaction):
+            if track == 'cancel':
+                await context.response.edit_message(content='搜尋已取消', view=None)
+            else:
+                await context.response.edit_message(content=f'已將 **{escape_markdown(track.title)}** 加入播放清單中',
+                                                    view=None)
         elif isinstance(context, discord.commands.context.ApplicationContext):
-            await context.respond(content=f'已將 **{escape_markdown(track.title)}** 加入播放清單中')
+            if track == 'timeout':
+                await context.edit(content='給林北認真選啦', view=None)
+            else:
+                await context.respond(content=f'已將 **{escape_markdown(track.title)}** 加入播放清單中')
 
-        await player.queue.put_wait(track)
+        if isinstance(track, wavelink.Track):
+            await player.queue.put_wait(track)
         if not player.is_playing():
             await cls._play(context.guild)
 

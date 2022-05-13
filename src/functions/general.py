@@ -26,7 +26,7 @@ class TestCmd(commands.Cog):
     def is_bot_dev(ctx):
         role_id = config['BOT']['role_ids']
         for i in role_id:
-            role = discord.utils.get(ctx.author.roles, id=i)
+            role = discord.utils.get(ctx.author.roles, id=int(i))
             if role is None:
                 raise commands.MissingRole(role_id)
         return True

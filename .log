@@ -1,6 +1,10 @@
-[20220512 PM 11:25:21][INFO][DiscordMusicBot]:
+[2022-05-13 AM 02:09:09][INFO][DiscordMusicBot]:
 Starting bot
-[20220512 PM 11:25:24][INFO][DiscordMusicBot]:
+[2022-05-13 AM 02:09:12][INFO][DiscordMusicBot]:
 READY!
-[20220512 PM 11:25:24][INFO][DiscordMusicBot]:
+[2022-05-13 AM 02:09:13][INFO][DiscordMusicBot]:
 Lavalink server connected
+[2022-05-13 AM 07:49:53][ERROR][DiscordMusicBot.Guild.世外桃源]:
+
+Application Command raised an exception: AttributeError: 'NoneType' object has no attribute 'title'
+NoneType: None
