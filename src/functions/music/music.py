@@ -1,4 +1,5 @@
 import logging
+from tabnanny import check
 
 import discord
 import wavelink
@@ -47,24 +48,6 @@ class MusicCmd(commands.Cog):
             self.songRepeat[guild.id] = False
             self.queueLoop[guild.id] = False
 
-    @staticmethod
-    def _is_author_in_vc():
-        def predicate(ctx):
-            if ctx.author.voice is None:
-                raise commands.CommandError("請問我是要播給誰聽？")
-            return True
-
-        return commands.check(predicate)
-
-    @staticmethod
-    def _is_bot_joined():
-        def predicate(ctx):
-            if ctx.guild.voice_client is None:
-                raise commands.CommandError("請問空氣可以播音樂嗎？")
-            return True
-
-        return commands.check(predicate)
-
     @classmethod
     def get_node(cls):
         node = wavelink.NodePool.get_node()
@@ -75,6 +58,22 @@ class MusicCmd(commands.Cog):
         node = cls.get_node()
         player: wavelink.Player = node.get_player(guild)
         return player
+
+    @staticmethod
+    def _is_author_in_vc():
+        def predicate(ctx):
+            if ctx.author.voice is None:
+                raise commands.CommandError("請問我是要播給誰聽？")
+            return True
+        return commands.check(predicate)
+
+    @staticmethod
+    def _is_bot_joined():
+        def predicate(ctx):
+            if ctx.guild.voice_client is None:
+                raise commands.CommandError("請問空氣可以播音樂嗎？")
+            return True
+        return commands.check(predicate)
 
     music = SlashCommandGroup("music", "音樂用")
 
@@ -97,8 +96,7 @@ class MusicCmd(commands.Cog):
             await ctx.respond(":two_hearts: 我來啦~ :cupid:")
             await player.move_to(ctx.author.voice.channel)
 
-        logging.getLogger(f'DiscordMusicBot.Guild.{ctx.guild}').debug(
-            f'joined channel<{ctx.author.voice.channel}>')
+
         return
 
     # & leave
@@ -128,10 +126,16 @@ class MusicCmd(commands.Cog):
     @music.command(name="nowplaying")
     async def music_nowplaying(self, ctx):
         player = self.get_player(ctx.guild)
-        if player is None or player.source is None:
-            return await ctx.respond(f':sleeping: 閒置中...')
-        else:
-            return await ctx.respond(f':musical_note: 現正播放:\n**{escape_markdown(player.source.info["title"])}**')
+
+        def minute(sec): return f'{int(sec // 60)}:{int(sec % 60)}'
+
+        await ctx.respond(
+            '\n'.join([
+                f':sleeping: 閒置中...' if player is None or player.source is None
+                else f':musical_note: 現正播放:\n**{escape_markdown(player.source.title)}**',
+                     f'{minute(player.position)}/{minute(player.source.duration)}'
+            ])
+        )
 
     # & queue
     @music.command(name="queue")
@@ -144,11 +148,21 @@ class MusicCmd(commands.Cog):
 
         i: int = 0
         index = str
-        respond_str = [
-            '' if player.source is None or player is None else f":musical_note: 現正播放:",
-            f"**{escape_markdown(player.source.title)}**" if player.is_playing() else f':sleeping: 閒置中...',
-            f"Youtuber: {player.source.author}",
-            ':notes: 歌單:']
+        respond_str = []
+
+        if player is not None or player.source is not None:
+            if player.is_playing():
+                respond_str.append(":musical_note: 現正播放:")
+                respond_str.append(
+                    f"**{escape_markdown(player.source.title)}**")
+                respond_str.append(f"Youtuber: {player.source.author}")
+            else:
+                respond_str.append(":sleeping: 閒置中...")
+        else:
+            respond_str.append(":sleeping: 閒置中...")
+
+        respond_str.append(':notes: 歌單:')
+
         for song in player.queue:
             i = i + 1
             if len(player.queue) > 9:
@@ -162,7 +176,7 @@ class MusicCmd(commands.Cog):
             respond_str.append(
                 f'{"".join([number_map[a] for a in list(index)])}  {song.title}')
             respond_str.append(
-                f"{'      ' * len(index)}Youtuber: {player.source.author}")
+                f"{'       ' * len(index)}Youtuber: {player.source.author}")
         respond_str.append(f'')
         respond_str.append(
             f':repeat_one: **單曲循環**  {":white_check_mark: " if self.songRepeat[ctx.guild.id] else ":x:"}')
@@ -191,7 +205,7 @@ class MusicCmd(commands.Cog):
         if toggle is not None:
             self.songRepeat[ctx.guild.id] = toggle
         return await ctx.respond(
-            f':repeat: **單曲循環**  {":white_check_mark: " if self.songRepeat[ctx.guild.id] else ":x:"}')
+            f':repeat_one: **單曲循環**  {":white_check_mark: " if self.songRepeat[ctx.guild.id] else ":x:"}')
 
     # & loop
     @music.command(name="loop")
@@ -221,8 +235,6 @@ class MusicCmd(commands.Cog):
     @_is_author_in_vc()
     async def music_play(self, ctx, search: discord.Option(str, description='請搜尋') or None = None):
         player = self.get_player(ctx.guild)
-        if player is None:
-            await ctx.author.voice.channel.connect(cls=wavelink.Player)
 
         if search is None:
             if player.is_paused():
@@ -233,6 +245,9 @@ class MusicCmd(commands.Cog):
 
         searched_tracklist = await wavelink.YouTubeTrack.search(search)
         await ctx.respond(f":musical_note: **Searching** :mag_right: {search}")
+
+        if player is None:
+            await ctx.author.voice.channel.connect(cls=wavelink.Player)
 
         if yarl.URL(search).is_absolute():
             await self.add_track(searched_tracklist[0], ctx)
@@ -245,9 +260,8 @@ class MusicCmd(commands.Cog):
             self.ctx = ctx
             self.add_item(self._Menu(tracks))
 
-        async def on_timeout(self) -> None:
-
-            await MusicCmd.add_track('timeout', self.ctx)
+        # async def on_timeout(self) -> None:
+        #     await MusicCmd.add_track('timeout', self.ctx)
 
         class _Menu(discord.ui.Select):
             def __init__(self, tracks):
@@ -293,15 +307,15 @@ class MusicCmd(commands.Cog):
     async def _play(cls, guild):
         player = cls.get_player(guild)
         np = await player.queue.get_wait()
-        logging.getLogger(f"DiscordMusicBot.Guild.{player.guild}").debug(
-            f"Now playing: '{np}'")
+        logging.getLogger(f"DiscordMusicBot.Guild.{player.guild}").info(
+            f"Now playing: '{np}'", extra={'classname': __name__})
         await player.play(np)
 
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, player, track, reason):
         logger = logging.getLogger(f'DiscordMusicBot.Guild.{player.guild}')
-        logger.debug(
-            f"Finished playing: {escape_markdown(track.title)} [{reason}]")
+        logger.info(
+            f"Finished playing: {escape_markdown(track.title)} [{reason}]", extra={'classname': __name__})
 
         match reason:
             case "LOAD_FAILED":

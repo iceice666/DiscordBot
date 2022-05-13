@@ -11,8 +11,7 @@
 * [Wavelink](https://github.com/PythonistaGuild/Wavelink)
 
 ```bash
-  pip install py-cord[voice] --pre
-  pip install wavelink
+pip install -r requirements.txt
 ```
 
 * A [Lavalink](https://github.com/freyacodes/Lavalink) server
@@ -24,11 +23,18 @@
 python run.py
 ```
 
+Or you can just use `.dockerfile` to run.
+
+```bash
+docker build --pull --rm -f ".dockerfile" -t discordmusicbot:latest "."
+docker run --rm -it  discordmusicbot:latest
+```
+
 ### Extension
 
 You can add your own functions/extensions to this bot.
 
->You can put your code **anywhere**, but I recommended put in `src/functions` folder.
+> You can put your code **anywhere**, but I recommended put in `src/functions` folder.
 
 ```txt
 discordmusicbot/
@@ -46,7 +52,7 @@ discordmusicbot/
 
 Defines a `setup` function in your project root folder ( \_\_init\_\_.py ) like this:
 
- ```python
+```python
  # <your project>/__init__.py
  from .<your project> import <some something>
  import logging
