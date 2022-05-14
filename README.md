@@ -1,6 +1,7 @@
-# DiscordMusicBot
+# DiscordBot
 
-一個中文化的Discord音樂機器人
+一個中文化的Discord機器人
+* 現在可以播音樂
 
 ## For Developers
 
@@ -8,16 +9,19 @@
 
 * [Python 3.10+](https://www.python.org/downloads/)
 * [Pycord](https://github.com/Pycord-Development/pycord)
-* [Wavelink](https://github.com/PythonistaGuild/Wavelink)
 
 ```bash
 pip install pyyaml
 pip install py-cord[voice] --pre
-pip install wavelink
 ```
 
-* A [Lavalink](https://github.com/freyacodes/Lavalink) server
-  * You can use [public server](https://lavalink.darrennathanael.com/) or [build your own](https://github.com/freyacodes/Lavalink#server-configuration).
+>If ou want to play music, this is in need.
+>* [Wavelink](https://github.com/PythonistaGuild/Wavelink)
+> ```bash
+> pip install wavelink
+> ````
+>* A [Lavalink](https://github.com/freyacodes/Lavalink) server
+>  * You can use [public server](https://lavalink.darrennathanael.com/) or [build your own](https://github.com/freyacodes/Lavalink#server-configuration).
 
 ### Run
 
@@ -29,7 +33,7 @@ Or you can just use `.dockerfile` to run.
 
 ```bash
 docker build --pull --rm -f ".dockerfile" -t discordmusicbot:latest "."
-docker run --rm -it  discordmusicbot:latest
+docker run --rm -it  discordbot:latest
 ```
 
 ### Extension
@@ -39,7 +43,7 @@ You can add your own functions/extensions to this bot.
 > You can put your code **anywhere**, but I recommended put in `src/functions` folder.
 
 ```txt
-discordmusicbot/
+discordbot/
     └─ src
         └─ functions
              ├─ __init__.py
@@ -69,11 +73,11 @@ To load extensions, add the filepath where you define the `setup` function to th
 ```python
 # in src/bot.py
 ...
+def load_extension():
+  extension.append('src.functions.<your project>')
 
-extension.append('src.functions.<your project>')
-
-#If you didn't define the setup up function in your project root folder ( __init__.py )
-extension.append('src.functions.<your project>.<where you define the setup function>')
+  #If you didn't define the setup up function in your project root folder ( __init__.py )
+  extension.append('src.functions.<your project>.<where you define the setup function>')
 
 ...
 ```
