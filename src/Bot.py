@@ -4,6 +4,8 @@ import discord
 
 from src import config
 
+if __name__ == '__main__':
+    print('Use "python run.py" to run!')
 
 extension = [
     'src.functions',
@@ -11,7 +13,9 @@ extension = [
     'src.listener'
 ]
 
+
 def load_extension():
+    global bot
     for i in extension:
         bot.load_extension(i)
         logger.info(f'Extension {i} loaded', extra={'classname': __name__})
@@ -51,7 +55,18 @@ logger_formatter = logging.Formatter(
     '[%(asctime)s][%(levelname)s][%(name)s][%(module)s]\n%(message)s\n', datefmt="%Y-%m-%d %p %I:%M:%S"
 )
 
-bot = discord.Bot(owner_ids=config["BOT"]["owner_ids"])
+
+
+
+def _start():
+    global logger
+    logger = logging.getLogger("DiscordMusicBot")
+    load_extension()
+
+    bot = discord.Bot(owner_ids=config["BOT"]["owner_ids"])
+    logger.info("Starting bot", extra={'classname': __name__})
+    bot.run(config["BOT"]["token"])
+
 
 def run():
     global logger
@@ -66,11 +81,7 @@ def run():
     file.setFormatter(logger_formatter)
     logger.addHandler(file)
 
-    logger = logging.getLogger("DiscordMusicBot")
-    load_extension()
-
-    logger.info("Starting bot", extra={'classname': __name__})
-    bot.run(config["BOT"]["token"])
+    _start()
 
 
 def docker_run():
@@ -79,9 +90,4 @@ def docker_run():
     console.setLevel(level=logging.DEBUG)
     console.setFormatter(logger_formatter)
     logger.addHandler(console)
-
-    logger = logging.getLogger("DiscordMusicBot")
-    load_extension()
-
-    logger.info("Starting bot", extra={'classname': __name__})
-    bot.run(config["BOT"]["token"])
+    _start()
