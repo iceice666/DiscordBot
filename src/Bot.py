@@ -11,6 +11,12 @@ extension = [
     'src.listener'
 ]
 
+def load_extension():
+    for i in extension:
+        bot.load_extension(i)
+        logger.info(f'Extension {i} loaded', extra={'classname': __name__})
+
+
 print("\n")
 print("""
 
@@ -55,16 +61,13 @@ def run():
     logger.addHandler(console)
 
     logger = logging.getLogger("DiscordMusicBot")
-    file = logging.FileHandler(".log", encoding='utf-8', mode='w')
+    file = logging.FileHandler("log/.log", encoding='utf-8', mode='w')
     file.setLevel(level=logging.DEBUG)
     file.setFormatter(logger_formatter)
     logger.addHandler(file)
 
     logger = logging.getLogger("DiscordMusicBot")
-    for i in extension:
-        bot.load_extension(i)
-        logger.info(f'Extension {i} loaded', extra={'classname': __name__})
-
+    load_extension()
 
     logger.info("Starting bot", extra={'classname': __name__})
     bot.run(config["BOT"]["token"])
@@ -78,9 +81,7 @@ def docker_run():
     logger.addHandler(console)
 
     logger = logging.getLogger("DiscordMusicBot")
-    for i in extension:
-        bot.load_extension(i)
-        logger.info(f'Extension {i} loaded', extra={'classname': __name__})
+    load_extension()
 
     logger.info("Starting bot", extra={'classname': __name__})
     bot.run(config["BOT"]["token"])

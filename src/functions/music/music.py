@@ -241,7 +241,6 @@ class MusicCmd(commands.Cog):
 
         await ctx.respond(f":musical_note: **Searching** :mag_right: {search}")
         if yarl.URL(search).is_absolute():
-
             await self.add_track(searched_tracklist[0], ctx)
         else:
             await ctx.respond(view=self._View(ctx, searched_tracklist))

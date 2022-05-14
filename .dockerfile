@@ -1,6 +1,7 @@
 FROM python:3.10
 
-LABEL author="KSHSlime#9034" Github="https://github.com/iceice666/DiscordMusicBot"
+LABEL NAME="DiscordBot" DESCRIPTION="A high mobility Discord bot."
+LABEL author="KSHSlime#9034" Github="https://github.com/iceice666/DiscordBot"
 
 WORKDIR /user/src/app
 
