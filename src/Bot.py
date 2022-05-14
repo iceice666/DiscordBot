@@ -3,27 +3,21 @@ import logging
 import discord
 
 from src import config
+import os
 
 if __name__ == '__main__':
     print('Use "python run.py" to run!')
 
-extension = [
-    'src.functions',
-    'src.functions.music',
-    'src.listener'
-]
+extension: list
+with open(f"{os.getcwd()}/activate", mode="r") as f:
+    extension = f.readlines()
 
-
-def load_extension():
-    global bot
-    for i in extension:
-        bot.load_extension(i)
-        logger.info(f'Extension {i} loaded', extra={'classname': __name__})
+extension.append('src.listener')
+extension.append('src.functions')
 
 
 print("\n")
 print("""
-
 
 
              @@@@      @@@@
@@ -56,16 +50,28 @@ logger_formatter = logging.Formatter(
 )
 
 
-
-
 def _start():
     global logger
-    logger = logging.getLogger("DiscordMusicBot")
-    load_extension()
+    logger = logging.getLogger("DiscordBot")
 
+    global bot
     bot = discord.Bot(owner_ids=config["BOT"]["owner_ids"])
+
     logger.info("Starting bot", extra={'classname': __name__})
+
+    load_extension()
     bot.run(config["BOT"]["token"])
+
+
+def load_extension():
+    global bot
+    for i in extension:
+        i = i.replace('\n', '')
+        if i.startswith('#') or i == '':
+            continue
+
+        bot.load_extension(i)
+        logger.info(f'Extension {i} loaded', extra={'classname': __name__})
 
 
 def run():
@@ -75,7 +81,7 @@ def run():
     console.setFormatter(logger_formatter)
     logger.addHandler(console)
 
-    logger = logging.getLogger("DiscordMusicBot")
+    logger = logging.getLogger("DiscordBot")
     file = logging.FileHandler("log/.log", encoding='utf-8', mode='w')
     file.setLevel(level=logging.DEBUG)
     file.setFormatter(logger_formatter)

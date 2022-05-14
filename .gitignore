@@ -8,3 +8,5 @@ lavalink/
 
 config.yaml
 log
+.history
+.devcontainer

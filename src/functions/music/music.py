@@ -1,6 +1,5 @@
 import logging
-from tabnanny import check
-
+import time
 import discord
 import wavelink
 import yarl
@@ -113,18 +112,16 @@ class MusicCmd(commands.Cog):
         await ctx.respond("paused")
 
     # & nowplaying
-    # TODO seek the duration
     @music.command(name="nowplaying")
     async def music_nowplaying(self, ctx):
         player = self.get_player(ctx.guild)
-
-        def minute(sec): return f'{int(sec // 60)}:{int(sec % 60)}'
 
         await ctx.respond(
             '\n'.join([
                 f':sleeping: 閒置中...' if player is None or player.source is None
                 else f':musical_note: 現正播放:\n**{escape_markdown(player.source.title)}**',
-                     f'{minute(player.position)}/{minute(player.source.duration)}'
+                     f'{time.strftime("%H:%M:%S",time.gmtime(seconds=player.position))}/\
+                     {time.strftime("%H:%M:%S",time.gmtime(seconds=player.source.duration))}'
             ])
         )
 
@@ -146,7 +143,7 @@ class MusicCmd(commands.Cog):
                 respond_str.append(":musical_note: 現正播放:")
                 respond_str.append(
                     f"**{escape_markdown(player.source.title)}**")
-                respond_str.append(f"Youtuber: {player.source.author}")
+                respond_str.append(f"By: __{player.source.author}__")
             else:
                 respond_str.append(":sleeping: 閒置中...")
         else:
@@ -178,6 +175,10 @@ class MusicCmd(commands.Cog):
 
     # & remove
     # TODO remove song
+    @music.command(name="remove")
+    @_is_author_in_vc()
+    async def music_remove(self, ctx):
+        pass
 
     # & clear
     @music.command(name="clear")
@@ -298,13 +299,13 @@ class MusicCmd(commands.Cog):
     async def _play(cls, guild):
         player = cls.get_player(guild)
         np = await player.queue.get_wait()
-        logging.getLogger(f"DiscordMusicBot.Guild.{player.guild}").info(
+        logging.getLogger(f"DiscordBot.Guild.{player.guild}").info(
             f"Now playing: '{np}'", extra={'classname': __name__})
         await player.play(np)
 
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, player, track, reason):
-        logger = logging.getLogger(f'DiscordMusicBot.Guild.{player.guild}')
+        logger = logging.getLogger(f'DiscordBot.Guild.{player.guild}')
         logger.info(
             f"Finished playing: {escape_markdown(track.title)} [{reason}]", extra={'classname': __name__})
 

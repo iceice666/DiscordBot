@@ -10,22 +10,21 @@
 
 * [Python 3.10+](https://www.python.org/downloads/) (Only Python 3.10 support match-case syntax!)
 * [Pycord](https://github.com/Pycord-Development/pycord)
+* [Wavelink](https://github.com/PythonistaGuild/Wavelink)
+  * A [Lavalink](https://github.com/freyacodes/Lavalink) server
+  * You can use [public server](https://lavalink.darrennathanael.com/) or [build your own](https://github.com/freyacodes/Lavalink#server-configuration).
 
 ```bash
 pip install pyyaml
 pip install py-cord[voice] --pre
+pip install wavelink
 ```
 
-> If ou want to play music, this is in need.
+>Or just install all requriement.
 >
-> * [Wavelink](https://github.com/PythonistaGuild/Wavelink)
->
-> ```bash
-> pip install wavelink
-> ```
->
-> * A [Lavalink](https://github.com/freyacodes/Lavalink) server
-> * You can use [public server](https://lavalink.darrennathanael.com/) or [build your own](https://github.com/freyacodes/Lavalink#server-configuration).
+>```bash
+> pip install -r requirements.txt
+>```
 
 ### Run
 
@@ -44,7 +43,7 @@ docker run --rm -it  discordbot:latest
 
 You can add your own functions/extensions to this bot.
 
-> You can put your code **anywhere**, but I recommended put in `src/functions` folder.
+Put your code in `src/functions` folder.
 
 ```txt
 discordbot/
@@ -72,16 +71,16 @@ Defines a `setup` function in your project root folder ( \_\_init\_\_.py ) like 
    do_somthing()
 ```
 
-To load extensions, add the filepath where you define the `setup` function to the `extension` variable in `src/bot.py`.
+To load extensions, add the filepath where you define the `setup` function to  `activate` file.
 
-```python
-# in src/bot.py
+```txt
+# in activate file
 ...
-def load_extension():
-  extension.append('src.functions.<your project>')
 
-  #If you didn't define the setup up function in your project root folder ( __init__.py )
-  extension.append('src.functions.<your project>.<where you define the setup function>')
+src.functions.<your project>
+
+#If you didn't define the setup up function in your project root folder ( __init__.py )
+src.functions.<your project>.<where you define the setup function>
 
 ...
 ```

@@ -1,0 +1,7 @@
+services:
+  Discordbot:
+    build:
+      context: .
+      dockerfile: .dockerfile
+    image: discordbot:latest
+    container_name: Discord-Bot
