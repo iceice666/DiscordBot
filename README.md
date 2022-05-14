@@ -1,13 +1,14 @@
 # DiscordBot
 
 一個中文化的Discord機器人
+
 * 現在可以播音樂
 
 ## For Developers
 
 ### You need
 
-* [Python 3.10+](https://www.python.org/downloads/)
+* [Python 3.10+](https://www.python.org/downloads/) (Only Python 3.10 support match-case syntax!)
 * [Pycord](https://github.com/Pycord-Development/pycord)
 
 ```bash
@@ -15,13 +16,16 @@ pip install pyyaml
 pip install py-cord[voice] --pre
 ```
 
->If ou want to play music, this is in need.
->* [Wavelink](https://github.com/PythonistaGuild/Wavelink)
+> If ou want to play music, this is in need.
+>
+> * [Wavelink](https://github.com/PythonistaGuild/Wavelink)
+>
 > ```bash
 > pip install wavelink
-> ````
->* A [Lavalink](https://github.com/freyacodes/Lavalink) server
->  * You can use [public server](https://lavalink.darrennathanael.com/) or [build your own](https://github.com/freyacodes/Lavalink#server-configuration).
+> ```
+>
+> * A [Lavalink](https://github.com/freyacodes/Lavalink) server
+> * You can use [public server](https://lavalink.darrennathanael.com/) or [build your own](https://github.com/freyacodes/Lavalink#server-configuration).
 
 ### Run
 
@@ -32,7 +36,7 @@ python run.py
 Or you can just use `.dockerfile` to run.
 
 ```bash
-docker build --pull --rm -f ".dockerfile" -t discordmusicbot:latest "."
+docker build --pull --rm -f ".dockerfile" -t discordbot:latest "."
 docker run --rm -it  discordbot:latest
 ```
 

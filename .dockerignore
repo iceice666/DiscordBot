@@ -5,4 +5,4 @@
 ./README.md
 ./config_template.yaml
 ./.gitignore
-./.log
+./log
