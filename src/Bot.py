@@ -46,32 +46,12 @@ print("""
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 logger_formatter = logging.Formatter(
-    '[%(asctime)s][%(levelname)s][%(name)s][%(module)s]\n%(message)s\n', datefmt="%Y-%m-%d %p %I:%M:%S"
+    '\n[%(asctime)s][%(levelname)s][%(name)s][%(module)s]\n%(message)s', datefmt="%Y-%m-%d %p %I:%M:%S"
 )
 
 
-def _start():
-    global logger
-    logger = logging.getLogger("DiscordBot")
-
-    global bot
-    bot = discord.Bot(owner_ids=config["BOT"]["owner_ids"])
-
-    logger.info("Starting bot", extra={'classname': __name__})
-
-    load_extension()
-    bot.run(config["BOT"]["token"])
 
 
-def load_extension():
-    global bot
-    for i in extension:
-        i = i.replace('\n', '')
-        if i.startswith('#') or i == '':
-            continue
-
-        bot.load_extension(i)
-        logger.info(f'Extension {i} loaded', extra={'classname': __name__})
 
 
 def run():
@@ -87,13 +67,18 @@ def run():
     file.setFormatter(logger_formatter)
     logger.addHandler(file)
 
-    _start()
 
+    logger = logging.getLogger("DiscordBot")
 
-def docker_run():
-    global logger
-    console = logging.StreamHandler()
-    console.setLevel(level=logging.DEBUG)
-    console.setFormatter(logger_formatter)
-    logger.addHandler(console)
-    _start()
+    bot = discord.Bot(owner_ids=config["BOT"]["owner_ids"])
+
+    logger.info("Starting bot", extra={'classname': __name__})
+
+    for i in extension:
+        i = i.replace('\n', '')
+        if i.startswith('#') or i == '':
+            continue
+
+        bot.load_extension(i)
+        logger.info(f'Extension {i} loaded', extra={'classname': __name__})
+    bot.run(config["BOT"]["token"])

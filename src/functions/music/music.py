@@ -120,8 +120,8 @@ class MusicCmd(commands.Cog):
             '\n'.join([
                 f':sleeping: 閒置中...' if player is None or player.source is None
                 else f':musical_note: 現正播放:\n**{escape_markdown(player.source.title)}**',
-                     f'{time.strftime("%H:%M:%S",time.gmtime(seconds=player.position))}/\
-                     {time.strftime("%H:%M:%S",time.gmtime(seconds=player.source.duration))}'
+                     f'{time.strftime("%H:%M:%S",time.gmtime(player.position))}/\
+                     {time.strftime("%H:%M:%S",time.gmtime(player.source.duration))}'
             ])
         )
 
@@ -177,8 +177,17 @@ class MusicCmd(commands.Cog):
     # TODO remove song
     @music.command(name="remove")
     @_is_author_in_vc()
-    async def music_remove(self, ctx):
-        pass
+    async def music_remove(self, ctx, by_index: discord.Option(int) or None = None, by_search: discord.Option(str) or None = None):
+        player = self.get_player(ctx.guild)
+        if by_index is not None:
+            track_index = by_index+1
+        elif by_search is not None:
+            for i, track in enumerate(by_search):
+                if track.title == by_search:
+                    track_index = i
+        elif by_search is None and by_index is None:
+            pass
+            #TODO a selection of queue
 
     # & clear
     @music.command(name="clear")
@@ -252,8 +261,8 @@ class MusicCmd(commands.Cog):
             self.ctx = ctx
             self.add_item(self._Menu(tracks))
 
-        # async def on_timeout(self) -> None:
-        #     await MusicCmd.add_track('timeout', self.ctx)
+        async def on_timeout(self) -> None:
+            await MusicCmd.add_track('timeout', self.ctx)
 
         class _Menu(discord.ui.Select):
             def __init__(self, tracks):

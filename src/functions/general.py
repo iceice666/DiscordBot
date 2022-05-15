@@ -13,9 +13,15 @@ class GeneralCmd(commands.Cog):
 
     @commands.slash_command(name="invite")
     async def cmd_invite(self, ctx):
-        view = discord.ui.View(discord.ui.Button(label="Invite", style=discord.ButtonStyle.primary,
-                                                 url=f"https://discord.com/api/oauth2/authorize?client_id={config['BOT']['client_id']}&permissions=8&scope=bot%20applications.commands"))
-        await ctx.respond(view=view)
+        await ctx.respond(
+            view=discord.ui.View(
+                discord.ui.Button(
+                    label="Invite",
+                    style=discord.ButtonStyle.primary,
+                    url=f"https://discord.com/api/oauth2/authorize?client_id={config['BOT']['client_id']}&permissions=8&scope=bot%20applications.commands"
+                )
+            )
+        )
 
 
 class TestCmd(commands.Cog):
@@ -43,8 +49,16 @@ class TestCmd(commands.Cog):
 
     @admin.command(name="quit")
     async def cmd_quit(self, ctx):
-        await ctx.respond('cya~', ephemeral=True)
-        sys.exit(0)
+        class _View(discord.ui.View):
+            @discord.ui.button(label="Cancel", style=discord.ButtonStyle.primary)
+            async def callback(self, button, interaction):
+                await interaction.response.edit_message(view=None)
+
+            @discord.ui.button(label="Confirm", style=discord.ButtonStyle.danger)
+            async def callback(self, button, interaction):
+                sys.exit(0)
+
+        await ctx.respond(view=_View(), ephemeral=True)
 
     @admin.command(name="echo")
     async def test_echo(self, ctx, msg):
