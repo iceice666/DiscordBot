@@ -32,7 +32,7 @@ file.setFormatter(logger_formatter)
 logger.addHandler(file)
 
 logger = logging.getLogger("DiscordBot")
-logger.INFO("""
+logger.info("""
 
 
              @@@@      @@@@

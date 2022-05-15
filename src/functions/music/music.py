@@ -201,7 +201,7 @@ class MusicCmd(commands.Cog):
 
                 async def callback(self, interaction):
                     if self.values[0] == 'cancel':
-                        return await interaction.response.edit_message(content='取消',
+                        return await interaction.response.edit_message(content='已取消',
                                                                        view=None)
 
                     track = self.queue[int(self.values[0])]
@@ -230,7 +230,6 @@ class MusicCmd(commands.Cog):
         if by_index is not None:
             return await ctx.respond(view=_Remove(track_index=by_index-1))
         elif  by_index is None:
-            # TODO a selection of queue
             return await ctx.respond(view=_Selection(player.queue._queue))
 
     # & clear
