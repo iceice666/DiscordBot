@@ -50,15 +50,16 @@ class TestCmd(commands.Cog):
     @admin.command(name="quit")
     async def cmd_quit(self, ctx):
         class _View(discord.ui.View):
-            @discord.ui.button(label="Cancel", style=discord.ButtonStyle.primary)
-            async def callback(self, button, interaction):
-                await interaction.response.edit_message(view=None)
+            @discord.ui.button(label="Cancel", row=0, style=discord.ButtonStyle.success)
+            async def _cancel_callback(self, button, interaction):
+                await interaction.response.edit_message(content=':sweat_smile: nice!', view=None)
 
-            @discord.ui.button(label="Confirm", style=discord.ButtonStyle.danger)
-            async def callback(self, button, interaction):
+            @discord.ui.button(label="Confirm", row=1, style=discord.ButtonStyle.danger)
+            async def _confirm_callback(self, button, interaction):
+                await interaction.response.edit_message(content="Cya!", view=None)
                 sys.exit(0)
 
-        await ctx.respond(view=_View(), ephemeral=True)
+        await ctx.respond('clam down plz bro', view=_View(), ephemeral=True)
 
     @admin.command(name="echo")
     async def test_echo(self, ctx, msg):

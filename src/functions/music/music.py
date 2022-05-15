@@ -1,5 +1,6 @@
 import logging
 import time
+from xml.dom.minidom import parseString
 import discord
 import wavelink
 import yarl
@@ -120,8 +121,8 @@ class MusicCmd(commands.Cog):
             '\n'.join([
                 f':sleeping: 閒置中...' if player is None or player.source is None
                 else f':musical_note: 現正播放:\n**{escape_markdown(player.source.title)}**',
-                     f'{time.strftime("%H:%M:%S",time.gmtime(player.position))}/\
-                     {time.strftime("%H:%M:%S",time.gmtime(player.source.duration))}'
+                     '{}/{}'.format(time.strftime("%H:%M:%S", time.gmtime(player.position)),
+                                    time.strftime("%H:%M:%S", time.gmtime(player.source.duration)))
             ])
         )
 
@@ -174,29 +175,71 @@ class MusicCmd(commands.Cog):
         return await ctx.respond('\n'.join(respond_str))
 
     # & remove
-    # TODO remove song
     @music.command(name="remove")
     @_is_author_in_vc()
-    async def music_remove(self, ctx, by_index: discord.Option(int) or None = None, by_search: discord.Option(str) or None = None):
+    async def music_remove(self, ctx, by_index: discord.Option(int) or None = None):
+        class _Selection(discord.ui.View):
+            def __init__(self, queue):
+                super().__init__(timeout=60)
+                self.ctx = ctx
+                self.add_item(self._Menu(queue))
+
+            async def on_timeout(self) -> None:
+                pass
+
+            class _Menu(discord.ui.Select):
+                def __init__(self, queue):
+                    super().__init__(placeholder="用queue指令查詢位置再直接刪除很難嗎 ")
+                    self.queue = queue
+
+                    self.add_option(label="取消", value='cancel')
+                    for i, track in enumerate(self.queue):
+                        if len(escape_markdown(track.title)) > 100:
+                            continue
+                        self.add_option(
+                            label=escape_markdown(track.title), value=i, description=track.author)
+
+                async def callback(self, interaction):
+                    if self.values[0] == 'cancel':
+                        return await interaction.response.edit_message(content='取消',
+                                                                       view=None)
+
+                    track = self.queue[int(self.values[0])]
+
+                    return await interaction.response.edit_message(content=f'刪除 {track.title} ?',
+                                                                   view=_Remove(int(self.values[0])))
+
+        class _Remove(discord.ui.View):
+            def __init__(self, track_index):
+                super().__init__(timeout=10)
+                self.track_index = track_index
+
+            @discord.ui.button(label="Cancel", style=discord.ButtonStyle.success)
+            async def callback(self, button, interaction):
+                await interaction.response.edit_message(content='已取消!', view=None)
+
+            @discord.ui.button(label="Confirm", style=discord.ButtonStyle.danger)
+            async def callback(self, button, interaction):
+                player = MusicCmd.get_player(interaction.guild)
+                track_title = player.queue._queue[self.track_index].title
+                player.queue._queue.remove(
+                    player.queue._queue[self.track_index])
+                await interaction.response.edit_message(content=f'已刪除 {track_title} !', view=None)
+
         player = self.get_player(ctx.guild)
         if by_index is not None:
-            track_index = by_index+1
-        elif by_search is not None:
-            for i, track in enumerate(by_search):
-                if track.title == by_search:
-                    track_index = i
-        elif by_search is None and by_index is None:
-            pass
-            #TODO a selection of queue
+            return await ctx.respond(view=_Remove(track_index=by_index-1))
+        elif  by_index is None:
+            # TODO a selection of queue
+            return await ctx.respond(view=_Selection(player.queue._queue))
 
     # & clear
+
     @music.command(name="clear")
     @_is_author_in_vc()
     async def music_clear(self, ctx):
         player = self.get_player(ctx.guild)
-        if player.queue.is_empty:
-            pass
-        else:
+        if not player.queue.is_empty:
             player.queue.clear()
 
     # & repeat
@@ -251,7 +294,10 @@ class MusicCmd(commands.Cog):
 
         await ctx.respond(f":musical_note: **Searching** :mag_right: {search}")
         if yarl.URL(search).is_absolute():
-            await self.add_track(searched_tracklist[0], ctx)
+            try:
+                await self.add_track(searched_tracklist[0], ctx)
+            except IndexError:
+                await ctx.respond(f"I cant find this video! Plz try again!")
         else:
             await ctx.respond(view=self._View(ctx, searched_tracklist))
 
@@ -280,8 +326,7 @@ class MusicCmd(commands.Cog):
                     await MusicCmd.add_track('cancel', interaction)
                 for track in self.tracks:
                     if track.identifier == self.values[0]:
-                        await MusicCmd.add_track(track, interaction)
-                        return
+                        return await MusicCmd.add_track(track, interaction)
 
     @classmethod
     async def add_track(cls, track, context):
