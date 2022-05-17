@@ -3,12 +3,11 @@
 #Discord bot settings
 
 BOT:
+  accounts:
   #bot token
-  token: ""
-
-
+  - token: ""
   #bot client id
-  client_id: 1919810114514228922
+    client_id: 1919810114514228922
 
   #The Discord ids who own the bot.
   owner_ids:
@@ -17,7 +16,6 @@ BOT:
   #The role id who can use admin commands.
   role_ids:
     - 029384570239092434
-
 
   #Lavalink server
   #Some public servers

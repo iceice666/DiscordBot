@@ -4,5 +4,5 @@
 ./LICENSE
 ./README.md
 ./config_template.yaml
-./.gitignore
-./log
+./docker-compose.yml
+./log/**
