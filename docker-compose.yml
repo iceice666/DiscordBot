@@ -5,3 +5,4 @@ services:
       dockerfile: .dockerfile
     image: discordbot:latest
     container_name: Discord-Bot
+

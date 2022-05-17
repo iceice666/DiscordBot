@@ -17,8 +17,10 @@ class MusicCmd(commands.Cog):
         self._menu = None
         self.bot = bot
 
-        self.songRepeat: dict[int, bool] = {}
-        self.queueLoop: dict[int, bool] = {}
+        self.song_repeat: dict[int, bool] = {}
+        self.queue_loop: dict[int, bool] = {}
+
+        self.remove_after_skip: dict[int, bool] = {}
 
         bot.loop.create_task(self.connect_nodes())
 
@@ -36,18 +38,18 @@ class MusicCmd(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         for guild in self.bot.guilds:
-            self.songRepeat[guild.id] = False
-            self.queueLoop[guild.id] = False
+            self.song_repeat[guild.id] = False
+            self.queue_loop[guild.id] = False
+            self.remove_after_skip[guild.id] = False
 
-    @classmethod
-    def get_node(cls):
+    @staticmethod
+    def get_node():
         node = wavelink.NodePool.get_node()
         return node
 
-    @classmethod
-    def get_player(cls, guild):
-        node = cls.get_node()
-        player: wavelink.Player = node.get_player(guild)
+    @staticmethod
+    def get_player(guild):
+        player: wavelink.Player = wavelink.NodePool.get_node().get_player(guild)
         return player
 
     @staticmethod
@@ -119,9 +121,12 @@ class MusicCmd(commands.Cog):
         await ctx.respond(
             '\n'.join([
                 f':sleeping: 閒置中...' if player is None or player.source is None
-                else f':musical_note: 現正播放:\n**{escape_markdown(player.source.title)}**',
-                     f'{time.strftime("%H:%M:%S",time.gmtime(seconds=player.position))}/\
-                     {time.strftime("%H:%M:%S",time.gmtime(seconds=player.source.duration))}'
+                else ':musical_note: 現正播放:\n**{}**\n{} / {}'.format(
+                    escape_markdown(player.source.title),
+                    time.strftime("%H:%M:%S", time.gmtime(player.position)),
+                    time.strftime("%H:%M:%S", time.gmtime(
+                        player.source.duration))
+                )
             ])
         )
 
@@ -164,30 +169,92 @@ class MusicCmd(commands.Cog):
             respond_str.append(
                 f'{"".join([number_map[a] for a in list(index)])}  {song.title}')
             respond_str.append(
-                f"{'       ' * len(index)}Youtuber: {player.source.author}")
+                f"{'       ' * len(index)}__{player.source.author}__")
         respond_str.append(f'')
         respond_str.append(
-            f':repeat_one: **單曲循環**  {":white_check_mark: " if self.songRepeat[ctx.guild.id] else ":x:"}')
+            f':repeat_one: **單曲循環**  {":white_check_mark: " if self.song_repeat[ctx.guild.id] else ":x:"}')
         respond_str.append(
-            f':repeat: **歌單循環**  {":white_check_mark: " if self.queueLoop[ctx.guild.id] else ":x:"}')
+            f':repeat: **歌單循環**  {":white_check_mark: " if self.queue_loop[ctx.guild.id] else ":x:"}')
 
         return await ctx.respond('\n'.join(respond_str))
 
     # & remove
-    # TODO remove song
     @music.command(name="remove")
     @_is_author_in_vc()
-    async def music_remove(self, ctx):
-        pass
+    async def music_remove(self, ctx, by_index: discord.Option(int) or None = None):
+        class _Selection(discord.ui.View):
+            def __init__(self, queue):
+                super().__init__(timeout=60)
+                self.ctx = ctx
+                self.add_item(self._Menu(queue))
+
+            async def on_timeout(self) -> None:
+                self.ctx.edit(content='操作已過時!', view=None)
+
+            class _Menu(discord.ui.Select):
+                def __init__(self, queue):
+                    super().__init__(placeholder="用queue指令查詢位置再直接刪除很難嗎 ")
+                    self.queue = queue
+
+                    self.add_option(label="取消", value='cancel')
+                    for i, track in enumerate(self.queue):
+                        if len(escape_markdown(track.title)) > 100:
+                            continue
+                        self.add_option(
+                            label=escape_markdown(track.title), value=i, description=track.author)
+
+                async def callback(self, interaction):
+                    if self.values[0] == 'cancel':
+                        return await interaction.response.edit_message(content='已取消',
+                                                                       view=None)
+
+                    track = self.queue[int(self.values[0])]
+
+                    return await interaction.response.edit_message(content=f'刪除 {track.title} ?',
+                                                                   view=_Remove(int(self.values[0])))
+
+        class _Remove(discord.ui.View):
+            def __init__(self, track_index):
+                super().__init__(timeout=10)
+                self.add_item(self._Cancel())
+                self.add_item(self._Confirm(track_index))
+
+            async def on_timeout(self) -> None:
+                await super().on_timeout()
+
+            class _Cancel(discord.ui.Button):
+                def __init__(self):
+                    super().__init__(label="Cancel",  style=discord.ButtonStyle.primary)
+
+                async def callback(self,  interaction):
+                    await interaction.response.edit_message(content='已取消!', view=None)
+
+            class _Confirm(discord.ui.Button):
+                def __init__(self, track_index):
+                    super().__init__(label="Confirm", style=discord.ButtonStyle.danger)
+                    self.track_index = track_index
+
+                async def callback(self,  interaction):
+                    player = MusicCmd.get_player(interaction.guild)
+                    track_title = player.queue._queue[self.track_index].title
+                    player.queue._queue.remove(
+                        player.queue._queue[self.track_index])
+                    await interaction.response.edit_message(content=f'已刪除 **{track_title}**', view=None)
+
+        player = self.get_player(ctx.guild)
+        if by_index is not None:
+            return await ctx.respond(content=f'刪除 {player.queue._queue[self.track_index].title} ?',
+                                     view=_Remove(track_index=by_index-1))
+        elif by_index is None:
+            return await ctx.respond(view=_Selection(player.queue._queue))
 
     # & clear
+
     @music.command(name="clear")
     @_is_author_in_vc()
     async def music_clear(self, ctx):
         player = self.get_player(ctx.guild)
-        if player.queue.is_empty:
-            pass
-        else:
+        if not player.queue.is_empty:
             player.queue.clear()
 
     # & repeat
@@ -195,27 +262,69 @@ class MusicCmd(commands.Cog):
     @_is_author_in_vc()
     async def music_repeat(self, ctx, toggle: discord.Option(bool) or None = None):
         if toggle is not None:
-            self.songRepeat[ctx.guild.id] = toggle
+            self.song_repeat[ctx.guild.id] = toggle
         return await ctx.respond(
-            f':repeat_one: **單曲循環**  {":white_check_mark: " if self.songRepeat[ctx.guild.id] else ":x:"}')
+            f':repeat_one: **單曲循環**  {":white_check_mark: " if self.song_repeat[ctx.guild.id] else ":x:"}')
 
     # & loop
     @music.command(name="loop")
     @_is_author_in_vc()
     async def music_loop(self, ctx, toggle: discord.Option(bool) or None = None):
         if toggle is not None:
-            self.queueLoop[ctx.guild.id] = toggle
+            self.queue_loop[ctx.guild.id] = toggle
         return await ctx.respond(
-            f':repeat: **歌單循環**  {":white_check_mark: " if self.queueLoop[ctx.guild.id] else ":x:"}')
+            f':repeat: **歌單循環**  {":white_check_mark: " if self.queue_loop[ctx.guild.id] else ":x:"}')
 
     # & skip
     @music.command(name="skip")
     @_is_author_in_vc()
     @_is_bot_joined()
-    async def music_skip(self, ctx):
+    async def music_skip(self, ctx,
+                         remove: discord.Option(bool, description="是否要在跳過後將歌曲重清單移除") or None = None):
+
+        class _Remove(discord.ui.View):
+            def __init__(self, remove_after_skip):
+                super().__init__(timeout=10)
+                self.add_item(self._Cancel())
+                self.add_item(self._Confirm())
+                self.remove_after_skip = remove_after_skip
+
+            async def on_timeout(self) -> None:
+                await super().on_timeout()
+
+            class _Cancel(discord.ui.Button):
+                def __init__(self, remove_after_skip):
+                    super().__init__(label="No",  style=discord.ButtonStyle.primary)
+                    self.remove_after_skip = remove_after_skip
+
+                async def callback(self,  interaction):
+                    player = MusicCmd.get_player(interaction.guild)
+                    self.remove_after_skip[ctx.guild.id] = False
+                    await player.stop()
+                    await interaction.response.edit_message(content=':fast_forward: 已跳過', view=None)
+
+            class _Confirm(discord.ui.Button):
+                def __init__(self, remove_after_skip):
+                    super().__init__(label="Yes", style=discord.ButtonStyle.danger)
+                    self.remove_after_skip = remove_after_skip
+
+                async def callback(self,  interaction):
+                    player = MusicCmd.get_player(interaction.guild)
+                    self.remove_after_skip[ctx.guild.id] = True
+                    await player.stop()
+                    await interaction.response.edit_message(content=f':fast_forward: 已跳過', view=None)
+
         player = self.get_player(ctx.guild)
-        await player.stop()
-        return await ctx.respond(":fast_forward: Skipped")
+
+        if remove is None:
+            if player.source.duration > 600:
+                await ctx.respond("是否要在跳過後將歌曲重清單移除", view=_Remove(self.remove_after_skip))
+            else:
+                await player.stop()
+                await ctx.respond(":fast_forward: 已跳過")
+        else:
+            self.remove_after_skip[ctx.guild.id] = True
+            await player.stop()
 
     # & quickplay
     # TODO quickplay system
@@ -226,85 +335,90 @@ class MusicCmd(commands.Cog):
     @music.command(name="play", description='放音樂')
     @_is_author_in_vc()
     async def music_play(self, ctx, search: discord.Option(str, description='請搜尋') or None = None):
+
+        class _View(discord.ui.View):
+            def __init__(self, ctx, tracks):
+                super().__init__(timeout=60)
+                self.ctx = ctx
+                self.add_item(self._Menu(tracks))
+
+            async def on_timeout(self) -> None:
+                await add_track('timeout', self.ctx)
+
+            class _Menu(discord.ui.Select):
+                def __init__(self, tracks):
+                    super().__init__(placeholder="為啥你不要直接輸入網址呢？")
+                    self.tracks = tracks
+                    self.add_option(label="取消搜尋", value='cancel')
+                    for track in self.tracks:
+                        if len(escape_markdown(track.title)) > 100:
+                            continue
+                        self.add_option(
+                            label=escape_markdown(track.title), value=track.identifier, description=track.author)
+
+                async def callback(self, interaction):
+                    if self.values[0] == 'cancel':
+                        await add_track('cancel', interaction)
+                    for track in self.tracks:
+                        if track.identifier == self.values[0]:
+                            return await add_track(track, interaction)
+
+        async def add_track(track, context):
+            player = self.get_player(context.guild)
+
+            if isinstance(context, discord.Interaction):
+
+                if track == 'cancel':
+                    await context.response.edit_message(content='搜尋已取消', view=None)
+                else:
+                    await context.response.edit_message(content=f'已將 **{escape_markdown(track.title)}** 加入播放清單中', view=None)
+            elif isinstance(context, discord.commands.context.ApplicationContext):
+                if track == 'timeout':
+                    await context.edit(view=None)
+                else:
+                    await context.respond(content=f'已將 **{escape_markdown(track.title)}** 加入播放清單中')
+
+            if isinstance(track, wavelink.Track):
+                await player.queue.put_wait(track)
+            if not player.is_playing():
+                await _play(context.guild)
+
+        async def _play(guild):
+            player = self.get_player(guild)
+            np = await player.queue.get_wait()
+            logging.getLogger(f"DiscordBot.Guild.{player.guild}").info(
+                f"Now playing: '{np}'", extra={'classname': __name__})
+            await player.play(np)
+
         player = self.get_player(ctx.guild)
 
         if search is None:
-            if player.is_paused():
-                await player.resume()
-                return await ctx.respond("Unpause!")
-            else:
-                raise commands.CommandError("missing_song_name")
+            if player is not None:
+                if player.is_paused():
+                    await player.resume()
+                    return await ctx.respond("Unpause!")
+                else:
+                    raise commands.CommandError("missing_song_name")
 
-        searched_tracklist = await wavelink.YouTubeTrack.search(search)
+        while 1:
+            searched_tracklist = await wavelink.YouTubeTrack.search(search)
+            if len(searched_tracklist) >= 1:
+                break
 
         if player is None:
             await ctx.author.voice.channel.connect(cls=wavelink.Player)
 
-        await ctx.respond(f":musical_note: **Searching** :mag_right: {search}")
+        await ctx.respond(f":musical_note: **Searching** :mag_right: {escape_markdown(search)}")
         if yarl.URL(search).is_absolute():
-            await self.add_track(searched_tracklist[0], ctx)
+            try:
+                await add_track(searched_tracklist[0], ctx)
+            except IndexError:
+                await ctx.respond(f"I cant find this video! Plz try again!")
         else:
-            await ctx.respond(view=self._View(ctx, searched_tracklist))
+            await ctx.respond(view=_View(ctx, searched_tracklist))
 
-    class _View(discord.ui.View):
-        def __init__(self, ctx, tracks):
-            super().__init__(timeout=60)
-            self.ctx = ctx
-            self.add_item(self._Menu(tracks))
-
-        # async def on_timeout(self) -> None:
-        #     await MusicCmd.add_track('timeout', self.ctx)
-
-        class _Menu(discord.ui.Select):
-            def __init__(self, tracks):
-                super().__init__(placeholder="為啥你不要直接輸入網址呢？")
-                self.tracks = tracks
-                self.add_option(label="取消搜尋", value='cancel')
-                for track in self.tracks:
-                    if len(escape_markdown(track.title)) > 100:
-                        continue
-                    self.add_option(
-                        label=escape_markdown(track.title), value=track.identifier, description=track.author)
-
-            async def callback(self, interaction):
-                if self.values[0] == 'cancel':
-                    await MusicCmd.add_track('cancel', interaction)
-                for track in self.tracks:
-                    if track.identifier == self.values[0]:
-                        await MusicCmd.add_track(track, interaction)
-                        return
-
-    @classmethod
-    async def add_track(cls, track, context):
-        player = cls.get_player(context.guild)
-
-        if isinstance(context, discord.Interaction):
-
-            if track == 'cancel':
-                await context.response.edit_message(content='搜尋已取消', view=None)
-            else:
-                await context.response.edit_message(content=f'已將 **{escape_markdown(track.title)}** 加入播放清單中', view=None)
-        elif isinstance(context, discord.commands.context.ApplicationContext):
-            if track == 'timeout':
-                await context.edit(content='給林北認真選啦', view=None)
-            else:
-                await context.respond(content=f'已將 **{escape_markdown(track.title)}** 加入播放清單中')
-
-        if isinstance(track, wavelink.Track):
-            await player.queue.put_wait(track)
-        if not player.is_playing():
-            await cls._play(context.guild)
-
-    @classmethod
-    async def _play(cls, guild):
-        player = cls.get_player(guild)
-        np = await player.queue.get_wait()
-        logging.getLogger(f"DiscordBot.Guild.{player.guild}").info(
-            f"Now playing: '{np}'", extra={'classname': __name__})
-        await player.play(np)
-
-    @commands.Cog.listener()
-    async def on_wavelink_track_end(self, player, track, reason):
+    @commands.Cog.listener('on_wavelink_track_end')
+    async def _playing_finished(self, player, track, reason):
         logger = logging.getLogger(f'DiscordBot.Guild.{player.guild}')
         logger.info(
             f"Finished playing: {escape_markdown(track.title)} [{reason}]", extra={'classname': __name__})
@@ -312,15 +426,18 @@ class MusicCmd(commands.Cog):
         match reason:
             case "LOAD_FAILED":
                 logger.warning("無法載入歌曲！")
+                commands.CommandError("**無法載入歌曲！**\n**請重新加入歌單！**")
 
-            case "STOPPED":
-                pass
+            case "STOPPED" if self.remove_after_skip[player.guild.id]:
+                self.remove_after_skip[player.guild.id] = False
 
-            case _:
-                if self.songRepeat[player.guild.id]:
+            case _ if not self.remove_after_skip[player.guild.id]:
+                if self.song_repeat[player.guild.id]:
                     player.queue.put_at_front(track)
-                elif self.queueLoop[player.guild.id]:
+                elif self.queue_loop[player.guild.id]:
                     player.queue.put(track)
+                self.remove_after_skip[player.guild.id] = False
 
-        await self._play(player.guild)
+                await self._play(player.guild)
+
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
