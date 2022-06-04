@@ -23,7 +23,7 @@ class quickplay(commands.Cog):
 
     @qp.command(name="create")
     async def qp_create(self,ctx,name):
-        self.quickplay_list.append(self.qpInstance())
+        self.quickplay_list.append(self.qpInstance(name))
 
     @qp.command(name="edit")
     async def qp_edit(self,ctx):
@@ -35,7 +35,8 @@ class quickplay(commands.Cog):
         pass
 
     class qpInstance:
-        def __init__(self,):
+        def __init__(self,name):
+            self.name=name
             self.playlist=[]
         def add(self,value):
             self.playlist.append(value)
