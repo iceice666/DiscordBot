@@ -2,7 +2,7 @@ import logging
 
 import discord
 
-from src import config
+from . import config
 import os
 
 
@@ -25,10 +25,11 @@ class BOT:
         '\n[%(asctime)s][%(levelname)s][%(name)s][%(module)s]\n%(message)s', datefmt="%Y-%m-%d %p %I:%M:%S"
         )
 
-        #console = logging.StreamHandler()
-        #console.setLevel(level=logging.INFO)
-        #console.setFormatter(logger_formatter)
-        #logger.addHandler(console)
+        console = logging.StreamHandler()
+        console.setLevel(level=logging.INFO)
+        console.setFormatter(logger_formatter)
+        logger.addHandler(console)
+
 
         logger = logging.getLogger("DiscordBot")
         file = logging.FileHandler(f"log/{account['client_id']}.log", encoding='utf-8', mode='w')

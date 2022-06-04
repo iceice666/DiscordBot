@@ -1,13 +1,15 @@
 import logging
 import time
-import discord
 import wavelink
-import yarl
+
+import discord
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 from discord.utils import escape_markdown
 
-from src import config
+
+from .player import _PLAYER
+from ... import config
 
 
 class MusicCmd(commands.Cog):
@@ -169,7 +171,7 @@ class MusicCmd(commands.Cog):
             respond_str.append(
                 f'{"".join([number_map[a] for a in list(index)])}  {song.title}')
             respond_str.append(
-                f"{'       ' * len(index)}__{player.source.author}__")
+                f"{'       ' * len(index)}__{song.author}__")
         respond_str.append(f'')
         respond_str.append(
             f':repeat_one: **單曲循環**  {":white_check_mark: " if self.song_repeat[ctx.guild.id] else ":x:"}')
@@ -328,94 +330,17 @@ class MusicCmd(commands.Cog):
 
     # & quickplay
     # TODO quickplay system
+    async def music_quickplay(self, ctx):
+        pass
 
     # & play
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    _player = _PLAYER()
 
     @music.command(name="play", description='放音樂')
     @_is_author_in_vc()
     async def music_play(self, ctx, search: discord.Option(str, description='請搜尋') or None = None):
-
-        class _View(discord.ui.View):
-            def __init__(self, ctx, tracks):
-                super().__init__(timeout=60)
-                self.ctx = ctx
-                self.add_item(self._Menu(tracks))
-
-            async def on_timeout(self) -> None:
-                await add_track('timeout', self.ctx)
-
-            class _Menu(discord.ui.Select):
-                def __init__(self, tracks):
-                    super().__init__(placeholder="為啥你不要直接輸入網址呢？")
-                    self.tracks = tracks
-                    self.add_option(label="取消搜尋", value='cancel')
-                    for track in self.tracks:
-                        if len(escape_markdown(track.title)) > 100:
-                            continue
-                        self.add_option(
-                            label=escape_markdown(track.title), value=track.identifier, description=track.author)
-
-                async def callback(self, interaction):
-                    if self.values[0] == 'cancel':
-                        await add_track('cancel', interaction)
-                    for track in self.tracks:
-                        if track.identifier == self.values[0]:
-                            return await add_track(track, interaction)
-
-        async def add_track(track, context):
-            player = self.get_player(context.guild)
-
-            if isinstance(context, discord.Interaction):
-
-                if track == 'cancel':
-                    await context.response.edit_message(content='搜尋已取消', view=None)
-                else:
-                    await context.response.edit_message(content=f'已將 **{escape_markdown(track.title)}** 加入播放清單中', view=None)
-            elif isinstance(context, discord.commands.context.ApplicationContext):
-                if track == 'timeout':
-                    await context.edit(view=None)
-                else:
-                    await context.respond(content=f'已將 **{escape_markdown(track.title)}** 加入播放清單中')
-
-            if isinstance(track, wavelink.Track):
-                await player.queue.put_wait(track)
-            if not player.is_playing():
-                await _play(context.guild)
-
-        async def _play(guild):
-            player = self.get_player(guild)
-            np = await player.queue.get_wait()
-            logging.getLogger(f"DiscordBot.Guild.{player.guild}").info(
-                f"Now playing: '{np}'", extra={'classname': __name__})
-            await player.play(np)
-
-        player = self.get_player(ctx.guild)
-
-        if search is None:
-            if player is not None:
-                if player.is_paused():
-                    await player.resume()
-                    return await ctx.respond("Unpause!")
-                else:
-                    raise commands.CommandError("missing_song_name")
-
-        while 1:
-            searched_tracklist = await wavelink.YouTubeTrack.search(search)
-            if len(searched_tracklist) >= 1:
-                break
-
-        if player is None:
-            await ctx.author.voice.channel.connect(cls=wavelink.Player)
-
-        await ctx.respond(f":musical_note: **Searching** :mag_right: {escape_markdown(search)}")
-        if yarl.URL(search).is_absolute():
-            try:
-                await add_track(searched_tracklist[0], ctx)
-            except IndexError:
-                await ctx.respond(f"I cant find this video! Plz try again!")
-        else:
-            await ctx.respond(view=_View(ctx, searched_tracklist))
+        await self._player._run(ctx, search)
 
     @commands.Cog.listener('on_wavelink_track_end')
     async def _playing_finished(self, player, track, reason):
@@ -438,6 +363,6 @@ class MusicCmd(commands.Cog):
                     player.queue.put(track)
                 self.remove_after_skip[player.guild.id] = False
 
-                await self._play(player.guild)
+                await self._player._play(player.guild)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
