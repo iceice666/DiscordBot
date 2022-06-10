@@ -1,4 +1,3 @@
-from os import stat
 import wavelink
 from discord.utils import escape_markdown
 from discord.ext import commands

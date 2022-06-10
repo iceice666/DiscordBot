@@ -22,7 +22,8 @@ class MusicCmd(commands.Cog):
         self.song_repeat: dict[int, bool] = {}
         self.queue_loop: dict[int, bool] = {}
 
-        self.remove_after_skip: dict[int, bool] = {}
+        #self.remove_after_skip: dict[int, bool] = {}
+        self.skip_flag: dict[int, bool] = {}
 
         bot.loop.create_task(self.connect_nodes())
 
@@ -43,6 +44,13 @@ class MusicCmd(commands.Cog):
             self.song_repeat[guild.id] = False
             self.queue_loop[guild.id] = False
             self.remove_after_skip[guild.id] = False
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member, before, after):
+        logging.info(member)
+        logging.info(before)
+        logging.info(after)  
+
 
     @staticmethod
     def get_node():
@@ -180,6 +188,12 @@ class MusicCmd(commands.Cog):
 
         return await ctx.respond('\n'.join(respond_str))
 
+    # & storage
+    @music.command(name="storage")
+    async def music_playlist_return(self, ctx):
+        player = self.get_player(ctx.guild)
+        return await ctx.respond(';'.join([song.uri for song in player.queue]))
+
     # & remove
     @music.command(name="remove")
     @_is_author_in_vc()
@@ -284,52 +298,58 @@ class MusicCmd(commands.Cog):
     async def music_skip(self, ctx,
                          remove: discord.Option(bool, description="是否要在跳過後將歌曲重清單移除") or None = None):
 
-        class _Remove(discord.ui.View):
-            def __init__(self, remove_after_skip):
-                super().__init__(timeout=10)
-                self.add_item(self._Cancel())
-                self.add_item(self._Confirm())
-                self.remove_after_skip = remove_after_skip
+        # class _Remove(discord.ui.View):
+        #    def __init__(self, remove_after_skip):
+        #        super().__init__(timeout=10)
+        #        self.add_item(self._Cancel(remove_after_skip))
+        #        self.add_item(self._Confirm(remove_after_skip))
 
-            async def on_timeout(self) -> None:
-                await super().on_timeout()
+        #    async def on_timeout(self) -> None:
+        #        await super().on_timeout()
 
-            class _Cancel(discord.ui.Button):
-                def __init__(self, remove_after_skip):
-                    super().__init__(label="No",  style=discord.ButtonStyle.primary)
-                    self.remove_after_skip = remove_after_skip
+        #    class _Cancel(discord.ui.Button):
+        #        def __init__(self, remove_after_skip):
+        #            super().__init__(label="No",  style=discord.ButtonStyle.primary)
+        #            self.remove_after_skip = remove_after_skip
 
-                async def callback(self,  interaction):
-                    player = MusicCmd.get_player(interaction.guild)
-                    self.remove_after_skip[ctx.guild.id] = False
-                    await player.stop()
-                    await interaction.response.edit_message(content=':fast_forward: 已跳過', view=None)
+        #        async def callback(self,  interaction):
+        #            player = MusicCmd.get_player(interaction.guild)
+        #            self.remove_after_skip[ctx.guild.id] = False
+        #            await player.stop()
+        #            await interaction.response.edit_message(content=':fast_forward: 已跳過', view=None)
 
-            class _Confirm(discord.ui.Button):
-                def __init__(self, remove_after_skip):
-                    super().__init__(label="Yes", style=discord.ButtonStyle.danger)
-                    self.remove_after_skip = remove_after_skip
+        #    class _Confirm(discord.ui.Button):
+        #        def __init__(self, remove_after_skip):
+        #            super().__init__(label="Yes", style=discord.ButtonStyle.danger)
+        #            self.remove_after_skip = remove_after_skip
 
-                async def callback(self,  interaction):
-                    player = MusicCmd.get_player(interaction.guild)
-                    self.remove_after_skip[ctx.guild.id] = True
-                    await player.stop()
-                    await interaction.response.edit_message(content=f':fast_forward: 已跳過', view=None)
+        #        async def callback(self,  interaction):
+        #            player = MusicCmd.get_player(interaction.guild)
+        #            self.remove_after_skip[ctx.guild.id] = True
+        #            await player.stop()
+        #            await interaction.response.edit_message(content=f':fast_forward: 已跳過', view=None)
 
         player = self.get_player(ctx.guild)
 
-        if remove is None:
-            if player.source.duration > 600:
-                await ctx.respond("是否要在跳過後將歌曲重清單移除", view=_Remove(self.remove_after_skip))
-            else:
-                await player.stop()
-                await ctx.respond(":fast_forward: 已跳過")
-        else:
-            self.remove_after_skip[ctx.guild.id] = True
-            await player.stop()
+        # if remove is None:
+        #    if player.source.duration > 600:
+        #        await ctx.respond("是否要在跳過後將歌曲重清單移除", view=_Remove(self.remove_after_skip))
+        #    else:
+        #        self.remove_after_skip[ctx.guild.id] = True
+        #        await player.stop()
+        #        await ctx.respond(":fast_forward: 已跳過")
+        # else:
+        #    self.remove_after_skip[ctx.guild.id] = True
+        #    await player.stop()
+        #    await ctx.respond(":fast_forward: 已跳過")
+
+        self.skip_flag[ctx.guild.id] = True
+        await player.stop()
+        await ctx.respond(":fast_forward: 已跳過")
 
     # & quickplay
     # TODO quickplay system
+
     async def music_quickplay(self, ctx):
         pass
 
@@ -355,14 +375,16 @@ class MusicCmd(commands.Cog):
 
             case "STOPPED" if self.remove_after_skip[player.guild.id]:
                 self.remove_after_skip[player.guild.id] = False
+                self.skip_flag[player.guild.id]=False
+                if self.queue_loop[player.guild.id]:
+                    player.queue.put(track)
 
-            case _ if not self.remove_after_skip[player.guild.id]:
+            case "FINISHED":
                 if self.song_repeat[player.guild.id]:
                     player.queue.put_at_front(track)
                 elif self.queue_loop[player.guild.id]:
                     player.queue.put(track)
-                self.remove_after_skip[player.guild.id] = False
 
-                await self._player._play(player.guild)
+        await self._player._play(player.guild)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
