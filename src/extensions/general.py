@@ -4,7 +4,7 @@ import discord
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 
-from src import config
+from .. import config
 
 
 class GeneralCmd(commands.Cog):
@@ -39,7 +39,7 @@ class TestCmd(commands.Cog):
 
     @commands.slash_command(name="ping")
     async def cmd_ping(self, ctx):
-        await ctx.respond(f"Pong!\n{round(self.bot.latency, 2)}ms")
+        await ctx.respond(f"Pong!\n{round(self.bot.latency, 3)*1000}ms")
 
     @commands.slash_command(name="breakpoint")
     async def _breakpoint(self, ctx):
