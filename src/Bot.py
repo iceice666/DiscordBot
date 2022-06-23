@@ -14,12 +14,6 @@ class BOT:
         self.account = account
 
 
-        extension: list
-
-        extension = config['Modules']
-
-        extension.append('src.listener')
-        extension.append('src.extensions')
 
         logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)
@@ -66,10 +60,14 @@ class BOT:
 
         logger.info("Starting bot", extra={'classname': __name__})
 
+
+        extension: list = config['Modules']
+
+        extension.append('src.listener')
+        extension.append('src.extensions')
+
+
         for i in extension:
-            i = i.replace('\n', '')
-            if i.startswith('#') or i == '':
-                continue
 
             self.bot.load_extension(i)
             logger.info(f'Extension {i} loaded', extra={'classname': __name__})
