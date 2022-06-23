@@ -3,21 +3,23 @@ import logging
 import discord
 
 from . import config
-import os
+
+
 
 
 class BOT:
 
     def __init__(self, account) -> None:
+
         self.account = account
 
 
         extension: list
-        with open(f"{os.getcwd()}/activate", mode="r") as f:
-            extension = f.readlines()
+
+        extension = config['Modules']
 
         extension.append('src.listener')
-        extension.append('src.functions')
+        extension.append('src.extensions')
 
         logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)
@@ -31,11 +33,11 @@ class BOT:
         logger.addHandler(console)
 
 
-        logger = logging.getLogger("DiscordBot")
-        file = logging.FileHandler(f"log/{account['client_id']}.log", encoding='utf-8', mode='w')
-        file.setLevel(level=logging.DEBUG)
-        file.setFormatter(logger_formatter)
-        logger.addHandler(file)
+        #logger = logging.getLogger("DiscordBot")
+        #file = logging.FileHandler(f"log/{account['client_id']}.log", encoding='utf-8', mode='w+')
+        #file.setLevel(level=logging.DEBUG)
+        #file.setFormatter(logger_formatter)
+        #logger.addHandler(file)
 
         logger = logging.getLogger("DiscordBot")
         logger.info(f"""
