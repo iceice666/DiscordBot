@@ -10,9 +10,6 @@
 
 * [Python 3.10+](https://www.python.org/downloads/) (只有 Python 3.10 支持 match-case 語法!)
 * [Pycord](https://github.com/Pycord-Development/pycord)
-* [Wavelink](https://github.com/PythonistaGuild/Wavelink)
-  * 一個 [Lavalink](https://github.com/freyacodes/Lavalink) 伺服器
-  * 你可以 [使用現成的](https://lavalink.darrennathanael.com/) 或 [自己搭一個](https://github.com/freyacodes/Lavalink#server-configuration).
 
 ```bash
  pip install -r requirements.txt
@@ -32,4 +29,5 @@ docker run --rm -it  discordbot:latest
 ```
 
 ### 插件
+
 [link](https://github.com/iceice666/DiscordBotExtensions)
