@@ -6,7 +6,6 @@ lavalink/
 
 .idea/
 
-src/extensions/
 
 config.yaml
 log
