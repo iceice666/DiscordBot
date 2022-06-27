@@ -1,7 +1,11 @@
 
 import time
 import wavelink
-import yarl
+
+import urllib3
+from urllib3.request import RequestMethods
+from urllib3.util import parse_url as urlparse
+from bs4 import BeautifulSoup
 
 import discord
 from discord.commands import SlashCommandGroup
@@ -21,6 +25,7 @@ class MusicCmd(commands.Cog):
         self.bot = bot
         self.players: dict[int, PLAYER] = {}
         self._player = None
+        self.http = urllib3.PoolManager()
 
         bot.loop.create_task(self.connect_nodes())
 
@@ -49,10 +54,13 @@ class MusicCmd(commands.Cog):
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
         if member.id == self.bot.application_id and after.channel is None:
-            player = self.get_player()
-            if player is None:
-                return
-            await player.disconnect()
+            try:
+                player = self.get_player()
+                if player is None:
+                    return
+                await player.disconnect()
+            except AttributeError:
+                pass
 
     @staticmethod
     def _is_author_in_vc():
@@ -272,25 +280,7 @@ class MusicCmd(commands.Cog):
         await self._player.skip()
         await ctx.respond(":fast_forward: 已跳過")
 
-    async def _add_track(self, track, context):
 
-        if track == 'cancel':
-            await context.response.edit_message(content='搜尋已取消', view=None)
-            return
-        elif track == 'timeout':
-            await context.edit(view=None)
-            return
-
-        if isinstance(track, wavelink.Track):
-            await self._player.add_track(track)
-        else:
-            return
-
-        if isinstance(context, discord.Interaction):
-            await context.response.edit_message(
-                content=f'已將 **{escape_markdown(track.title)}** 加入播放清單中', view=None)
-        elif isinstance(context, discord.commands.context.ApplicationContext):
-            await context.respond(content=f'已將 **{escape_markdown(track.title)}** 加入播放清單中')
 
     # & play
     @music.command(name="play", description='放音樂')
@@ -301,39 +291,37 @@ class MusicCmd(commands.Cog):
             loop: discord.Option(bool) or None = None,
             repeat: discord.Option(bool) or None = None):
 
-        class _View(discord.ui.View):
+        async def _add_track( track):
 
-            def __init__(self, ctx, tracks, MusicCmd):
-                super().__init__(timeout=60)
-                self.MusicCmd = MusicCmd
-                self.ctx = ctx
-                self.add_item(self._Menu(
-                    tracks=tracks, MusicCmd=self.MusicCmd))
+            if isinstance(track, wavelink.Track):
+                await self._player.add_track(track)
+            else:
+                return
 
-            async def on_timeout(self) -> None:
-                await self.MusicCmd._add_track('timeout', self.ctx)
+            self._add_track_msg += f'已將 **{escape_markdown(track.title)}** 加入播放清單中\n'
 
-            class _Menu(discord.ui.Select):
-                def __init__(self, tracks, MusicCmd):
-                    super().__init__(placeholder="為啥你不要直接輸入網址呢？")
-                    self.tracks = tracks
-                    self.add_option(label="取消搜尋", value='cancel')
-                    for track in self.tracks:
-                        if len(escape_markdown(track.title)) > 100:
-                            continue
-                        self.add_option(
-                            label=escape_markdown(track.title), value=track.identifier, description=track.author)
-                    self.MusicCmd = MusicCmd
+        async def _selector_callback(interaction):
+            if interaction.data["values"] == 'cancel':
+                await interaction.delete_original_message()
+            await _add_track(self.searched_tracklist[interaction.data["values"][0]])
 
-                async def callback(self, interaction):
-                    if self.values[0] == 'cancel':
-                        await MusicCmd._add_track('cancel', interaction)
-                    for track in self.tracks:
-                        if track.identifier == self.values[0]:
-                            await self.MusicCmd._add_track(track, interaction)
-                            return
+        def _build_selector(tracks, on_timeout_callback: callable, triggered_callback: callable) -> discord.ui.View:
+            _view = discord.ui.View()
+            _view.on_timeout = on_timeout_callback
 
-        node = self._player.get_node()
+            _menu = discord.ui.Select(placeholder="為啥你不要直接輸入網址呢？")
+            _menu.add_option(label="取消搜尋", value='cancel')
+            for track in tracks:
+                if len(escape_markdown(track.title)) > 100:
+                    continue
+                _menu.add_option(
+                    label=escape_markdown(track.title), value=track.identifier, description=track.author)
+            _menu.callback = triggered_callback
+
+            _view.add_item(_menu)
+
+            return _view
+
         player = self.get_player()
 
         if searches is None:
@@ -344,32 +332,61 @@ class MusicCmd(commands.Cog):
 
         if player is None:
             await self._player.join(ctx)
+            player = self.get_player()
 
         if loop is not None:
             await self._player.loop(loop)
         if repeat is not None:
             await self._player.repeat(repeat)
 
-        for search in searches.split(";"):
+        async def _request(search):
             if search == "":
-                continue
+                return
 
-            check = yarl.URL(search)
-            if check.is_absolute() and str(check.host) == 'www.youtube.com' or str(check.host) == 'yout.be':
-                try:
-                    searched_tracklist = await node.get_tracks(cls=wavelink.SearchableTrack, query=f"ytsearch:{search}")
-                    await self._add_track(searched_tracklist[0], ctx)
-                except IndexError:
-                    await ctx.respond(f"I cant find {escape_markdown(search)}! Plz try again!")
+            node = self._player.get_node()
+
+            check = urlparse(search)
+            # url
+            if check.host in ['www.youtube.com', 'yout.be']:
+
+                searched_tracklist = await node.get_tracks(
+                    cls=wavelink.SearchableTrack,
+                    query="ytsearch:{}".format(
+                        BeautifulSoup(self.http.request(
+                            'GET', search).data, features='html.parser').title.string
+                        # search
+                    )
+                )
+                await _add_track(searched_tracklist[0])
+
+            # search
             else:
+                c = 0
                 while 1:
-                    searched_tracklist = await wavelink.YouTubeTrack.search(search)
-                    if len(searched_tracklist) >= 1:
+                    c += 1
+                    _searched_tracklist = await wavelink.YouTubeTrack.search(search)
+                    if len(_searched_tracklist) >= 1 or c > 5:
                         break
-                await ctx.respond(f":musical_note: **Searching** :mag_right: {escape_markdown(search)}", view=_View(ctx=ctx, tracks=searched_tracklist, MusicCmd=self))
+                self.searched_tracklist = {}
+                for track in _searched_tracklist:
+                    self.searched_tracklist[track.identifier] = track
+                await ctx.respond(f":musical_note: **Searching** :mag_right: {escape_markdown(search)}",
+                                  view=_build_selector(
+                                      self.searched_tracklist.values(), ctx.delete, _selector_callback))
 
-        if not self.get_player().is_playing():
-            await self._player.play_track()
+        search_list = searches.split(";")
+        self._add_track_msg = ""
+        self._add_track_count = 0
+        await ctx.respond(f"處理中...{self._add_track_count}/{len(search_list)}\n")
+
+        for search in search_list:
+            await _request(search)
+            self._add_track_count += 1
+            await ctx.interaction.edit_original_message(
+                content=f"處理中...{self._add_track_count}/{len(search_list)}\n"+self._add_track_msg, view=None)
+
+            if not self.get_player().is_playing():
+                await self._player.play_track()
 
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, player, track, reason):

@@ -32,6 +32,8 @@ class PLAYER:
 
     async def add_track(self, track):
         player = self.get_player()
+        logging.getLogger(f"DiscordBot.Guild.{self.guild}").info(
+            f"Add track: '{track}'", extra={'classname': __name__})
         await player.queue.put_wait(track)
 
     async def playing_finished(self, player, track, reason):
