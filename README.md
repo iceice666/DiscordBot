@@ -8,7 +8,7 @@
 
 ### 你需要
 
-* [Python 3.10+](https://www.python.org/downloads/) (只有 Python 3.10 支持 match-case 語法!)
+* [Python](https://www.python.org/downloads/) 
 * [Pycord](https://github.com/Pycord-Development/pycord)
 
 ```bash

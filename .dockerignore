@@ -5,4 +5,5 @@
 ./README.md
 ./config_template.yaml
 ./docker-compose.yml
+./**README**
 ./log/**
