@@ -7,7 +7,6 @@ import discord
 import logging
 
 
-
 class PLAYER:
     def __init__(self, guild: discord.Guild):
         self.song_repeat = False
@@ -43,31 +42,30 @@ class PLAYER:
         logger.info(
             f"Finished playing: {escape_markdown(track.title)} [{reason}]", extra={'classname': __name__})
 
-        match reason:
-            case "LOAD_FAILED":
-                logger.warning("無法載入歌曲！")
-                commands.CommandError("**無法載入歌曲！**\n**請重新加入歌單！**")
+        if reason == "LOAD_FAILED":
+            logger.warning("無法載入歌曲！")
+            commands.CommandError("**無法載入歌曲！**\n**請重新加入歌單！**")
 
-            case "STOPPED" if self.skip_flag:
-                self.skip_flag = False
+        elif reason == "STOPPED" and self.skip_flag:
+            self.skip_flag = False
 
-            case "STOPPED":
-                if self.queue_loop:
-                    player.queue.put(track)
+        elif reason == "STOPPED":
+            if self.queue_loop:
+                player.queue.put(track)
 
-            case "FINISHED":
-                if self.song_repeat:
-                    player.queue.put_at_front(track)
-                elif self.queue_loop:
-                    player.queue.put(track)
+        elif reason == "FINISHED":
+            if self.song_repeat:
+                player.queue.put_at_front(track)
+            elif self.queue_loop:
+                player.queue.put(track)
 
         await self.play_track()
 
-    async def repeat(self, toggle:bool):
+    async def repeat(self, toggle: bool):
         if toggle is not None:
             self.song_repeat = toggle
 
-    async def loop(self, toggle:bool):
+    async def loop(self, toggle: bool):
         if toggle is not None:
             self.queue_loop = toggle
 
@@ -106,7 +104,7 @@ class PLAYER:
         if player.is_paused():
             await player.resume()
 
-    async def remove(self,index):
+    async def remove(self, index):
         player = self.get_player()
         player.queue._queue.remove(
             player.queue._queue[index])
