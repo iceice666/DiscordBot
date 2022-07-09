@@ -30,7 +30,9 @@ class PLAYER:
             f"Now playing: '{np}'", extra={'classname': __name__})
         await player.play(np)
 
-    async def add_track(self, track):
+    async def add_track(self, track: wavelink.Track):
+        if not isinstance(track, wavelink.Track):
+            return
         player = self.get_player()
         logging.getLogger(f"DiscordBot.Guild.{self.guild}").info(
             f"Add track: '{track}'", extra={'classname': __name__})
@@ -102,4 +104,9 @@ class PLAYER:
     async def resume(self):
         player = self.get_player()
         if player.is_paused():
-            player.resume()
+            await player.resume()
+
+    async def remove(self,index):
+        player = self.get_player()
+        player.queue._queue.remove(
+            player.queue._queue[index])
